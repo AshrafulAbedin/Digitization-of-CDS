@@ -89,7 +89,17 @@ CREATE TABLE ready_made_daily_stock (
     daily_stock_id    SERIAL PRIMARY KEY,
     menu_item_id      INTEGER NOT NULL,
     stock_date        DATE NOT NULL DEFAULT CURRENT_DATE,
-    day_of_week       VARCHAR(10) GENERATED ALWAYS AS (TRIM(TO_CHAR(stock_date, 'Day'))) STORED,
+    day_of_week       VARCHAR(10) GENERATED ALWAYS AS (
+        CASE EXTRACT(DOW FROM stock_date)
+            WHEN 0 THEN 'Sunday'
+            WHEN 1 THEN 'Monday'
+            WHEN 2 THEN 'Tuesday'
+            WHEN 3 THEN 'Wednesday'
+            WHEN 4 THEN 'Thursday'
+            WHEN 5 THEN 'Friday'
+            WHEN 6 THEN 'Saturday'
+        END
+    ) STORED,
     quantity_received INTEGER DEFAULT 0,
     quantity_sold     INTEGER DEFAULT 0,
     quantity_wasted   INTEGER DEFAULT 0,
@@ -176,7 +186,17 @@ CREATE TABLE stockout_request (
     request_id    SERIAL PRIMARY KEY,
     menu_item_id  INTEGER NOT NULL REFERENCES menu_item(menu_item_id),
     request_date  DATE NOT NULL DEFAULT CURRENT_DATE,
-    day_of_week   VARCHAR(10) GENERATED ALWAYS AS (TRIM(TO_CHAR(request_date, 'Day'))) STORED,
+    day_of_week   VARCHAR(10) GENERATED ALWAYS AS (
+        CASE EXTRACT(DOW FROM request_date)
+            WHEN 0 THEN 'Sunday'
+            WHEN 1 THEN 'Monday'
+            WHEN 2 THEN 'Tuesday'
+            WHEN 3 THEN 'Wednesday'
+            WHEN 4 THEN 'Thursday'
+            WHEN 5 THEN 'Friday'
+            WHEN 6 THEN 'Saturday'
+        END
+    ) STORED,
     request_time  TIMESTAMP DEFAULT NOW(),
     quantity      INTEGER DEFAULT 1
 );
