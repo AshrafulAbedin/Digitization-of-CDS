@@ -18,9 +18,9 @@ Industry-standard KDS ticket grid — **not** kanban columns with buttons hidden
 
 - Tickets flow left-to-right, top-to-bottom in arrival order, as fixed-width cards (~260px) in a wrapping grid.
 - Each **ticket card**:
-  - Header strip colored by state: blue = new, amber = preparing, green = ready. Contains the token number (28px bold) and an **elapsed timer** (mm:ss, ticking) that turns amber at 5 min and red at 10 min.
+  - Header strip colored by state: blue = new, amber = preparing, green = ready. Contains the token number (48px bold, #1A1A1A) and an **elapsed timer** (mm:ss, ticking) that turns amber at 5 min and red at 10 min.
   - Meta line: Dine-in/Takeaway icon + customer name.
-  - Item lines: quantity in a box + item name, 16px, one per line. Only made-to-order items appear on tickets.
+  - Item lines: quantity in a box + item name, 18px (minimum), one per line. Only Kitchen items appear on tickets. Item names must be #3A3A3A on a #F8F6F3 background.
   - Footer: one full-width **bump button** that advances state: "Start" → "Ready" → "Served". A long-press (or small ⋯ menu) offers "Recall" (go back one state) and "Cancel".
 - New tickets slide in with a brief highlight and an optional chime.
 - Ready tickets older than 45 min are auto-flagged **Abandoned** (moved to a collapsed "Abandoned" tray at the bottom, recallable) — this mirrors the database cursor.
@@ -34,14 +34,14 @@ Two stacked sections:
 Cashier asks to exceed an item's per-order limit. Each request card: item name, "Token #1044 wants **6** (limit 4)", age. Actions: numeric stepper preloaded with the requested qty (min = limit+1, max = requested) + **Approve** (green) and **Reject** (red) buttons. Approving/rejecting removes the card instantly; the POS reacts in real time.
 
 ### 2. Batch management
-List of today's batches, each row: status dot, "#104 Fried Rice", progress "23/40 portions", and a context action: preparing → "Put on sale"; available → "Mark sold out". A "+ New batch" button opens a two-field inline form (item select limited to batch-cooked items, portions stepper, "Start cooking"). Starting a batch flips the POS card for that item to "Cooking…".
+List of today's batches, each row: status dot, "#104 Fried Rice", and a context action: preparing → "Put on sale"; available → "Mark sold out". A "+ New batch" button opens an inline form (item select limited to kitchen items, "Start cooking"). Starting a batch flips the POS card for that item to "Cooking…". No plate/portion tracking is needed.
 
 ## Behavior details
 
 - All updates arrive via the shared store — the board re-sorts automatically; never reorder on hover.
 - Timers must keep ticking without re-fetch (local interval).
 - Touch targets ≥ 48px; the bump button is the full card width and ≥ 52px tall.
-- Dark mode is the **default** for this screen (kitchens prefer dark KDS), light optional.
+- The screen uses the global light-mode theme; no dark mode.
 
 ## Data contract
 
@@ -49,7 +49,7 @@ List of today's batches, each row: status dot, "#104 Fried Rice", progress "23/4
 interface Ticket { token: string; placedAt: number; state: 'new' | 'preparing' | 'ready' | 'abandoned';
   dineIn: boolean; customer: string; lines: { qty: number; name: string }[]; }
 interface EscalationRequest { id: number; token: string; itemName: string; requested: number; limit: number; age: number; }
-interface Batch { id: number; itemName: string; status: 'preparing' | 'available' | 'exhausted'; produced: number; remaining: number; }
+interface Batch { id: number; itemName: string; status: 'preparing' | 'available' | 'exhausted'; }
 ```
 
 Dispatch: `ADVANCE_ORDER`, `APPROVE_KITCHEN_REQUEST`, `REJECT_KITCHEN_REQUEST`, `START_BATCH`, `MARK_BATCH_AVAILABLE`, `MARK_BATCH_EXHAUSTED`.

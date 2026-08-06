@@ -8,15 +8,14 @@ Build the **Cashier POS terminal** for OvenFresh CDS. Two-pane layout: product c
 
 ## Header bar (56px)
 
-Left: store name + live clock. Center: three compact metrics — today's order count, kitchen queue depth ("4 preparing"), active batches (popover on click listing each batch with a status dot and portions remaining). Right: parked-orders button with count badge, dark-mode toggle.
+Left: store name + live clock. Center: three compact metrics — today's order count, kitchen queue depth ("4 preparing"), active batches (popover on click listing each batch with a status dot). Right: parked-orders button with count badge.
 
 ## Catalog pane (left)
 
 - Sticky toolbar: search input (autofocus, filters as you type, `/` shortcut) + segmented filter: **All · Kitchen · Ready-Made**.
 - Product grid, 4–5 columns of compact cards (~110px tall). Each card: item name (2-line clamp), price bold bottom-left, availability bottom-right, and a colored left edge strip for state (green available, amber preparing, red out).
 - Availability display by item kind:
-  - **Batch-cooked item** (e.g. Fried Rice): "23 left · Batch #104" — sells from remaining portions of the active batch. Amber "Cooking…" when the batch is preparing; red "Sold out" when exhausted.
-  - **Made-to-order item** (e.g. Burger): "Made to order ~12 min".
+  - **Prepared in Kitchen item** (e.g. Fried Rice, Burger): "Batch #104" — sells from an active batch. Amber "Cooking…" when the batch is preparing; red "Sold out" when exhausted. No exact portions are tracked.
   - **Ready-made item** (e.g. Shingara): live stock count; when stock ≤ reorder level show an amber "Low" chip.
 - Whole card is the click target; click adds 1 to the ticket. Unavailable cards are 50% muted but still clickable — clicking opens a small **"Log missed demand"** popover (stepper + confirm) that records a stockout request.
 - Card click gives 100ms pressed feedback; item flies nowhere — no cute animations, the ticket line just appears/increments instantly.
@@ -26,14 +25,14 @@ Left: store name + live clock. Center: three compact metrics — today's order c
 Top to bottom:
 
 1. **Ticket header:** next token number `#1044` (large, tabular), Dine-in/Takeaway segmented control.
-2. **Customer strip:** one input — "Phone number (optional)". Empty = Guest (default, zero friction). Typing a valid 11-digit `01XXXXXXXXX` number looks up the customer: found → chip with name + "View active tokens" link; not found → inline "Register" affordance expanding to a single row: name field + save (phone + name only, NO ID/verification of any kind).
+2. **Customer strip:** one input — "Phone/Student ID (optional)". Empty = Guest (default, zero friction). Typing a valid 11-digit `01XXXXXXXXX` or Student ID looks up the customer: found → chip with name + ID + "View active tokens" link (note: token recovery only reprints the token; kitchen must still hand over food to clear ticket); not found → inline "Register" affordance expanding: name, ID Type (Student/NID), ID Number, and save. Cashier must verify physical ID.
 3. **Line items list** (scrolls): each row = name, unit price small, qty stepper (− qty +), line total right-aligned, swipe-free explicit ✕ remove. Qty stepper on a kitchen item that passes its per-order limit triggers the **kitchen escalation flow**: inline row state becomes "Ask kitchen for N" with a send button → row shows an amber "Awaiting kitchen…" spinner state; the row unlocks when the kitchen approves (qty set to approved amount, brief green flash) or rejects (reverts to limit, red flash + toast). While any row is pending, checkout is disabled and a **"Park order"** secondary button appears.
 4. **Totals block:** subtotal, total (large). Payment segmented control: **Cash · Mobile banking**.
 5. **Charge button:** full-width 56px primary — label "Charge ৳270". Disabled states show why ("Cart empty", "Awaiting kitchen…").
 
 ## Post-payment modal
 
-On charge: modal with oversized token number, order summary, payment method, and two buttons: "Print token" (primary) and "Done". If the order contains made-to-order items, show "Sent to kitchen — watch the token screen"; if not, "Hand over items now". Closing resets the ticket to a fresh token number and Guest customer.
+On charge: modal with oversized token number, order summary, payment method, and two buttons: "Print token" (primary) and "Done". If the order contains kitchen items, show "Sent to kitchen — watch the token screen"; if not, "Hand over items now". Closing resets the ticket to a fresh token number and Guest customer.
 
 ## Parked orders
 
@@ -46,9 +45,9 @@ Header button opens a right-side drawer listing parked tickets: token, customer,
 ## Data contract (assume from `useAppStore()`)
 
 ```ts
-interface Product { id: number; name: string; price: number; kind: 'BATCH' | 'TO_ORDER' | 'READY_MADE';
-  remaining?: number; batchId?: number; batchStatus?: 'preparing' | 'available' | 'exhausted';
-  stock?: number; reorderLevel?: number; perOrderLimit: number; etaMinutes?: number; }
+interface Product { id: number; name: string; price: number; kind: 'KITCHEN' | 'READY_MADE';
+  batchId?: number; batchStatus?: 'preparing' | 'available' | 'exhausted';
+  stock?: number; reorderLevel?: number; perOrderLimit: number; }
 interface TicketLine { productId: number; qty: number; pending?: boolean; approvedCeiling?: number; }
 ```
 

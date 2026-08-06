@@ -14,13 +14,14 @@ Prompt pack for regenerating the OvenFresh CDS frontend with an industry-standar
 | `03-token-display.md` | Customer token wall board | QSR order-status boards |
 | `04-inventory.md` | Inventory & purchasing back office | Square Dashboard / MarketMan |
 | `05-owner-analytics.md` | Owner analytics dashboard | Square Reports / Toast Sales Summary |
+| `06-landing-page.md` | Landing Page | Clean, minimal entry point |
 
 3. Each prompt ends with a **data contract** — the TypeScript shapes the screen consumes and the store actions it dispatches. These match the existing `useAppStore()` domain (see `src/store/AppStore.tsx`), so generated screens can be wired to the current store with light renaming.
 
 ## Locked business rules (do not let a generator "improve" these)
 
-- Guest checkout is the default; registration is **phone + name only**, no ID or verification.
-- Hybrid kitchen model: **batch-cooked** items sell from a batch's remaining portions; **made-to-order** items create kitchen tokens; **ready-made** items sell from stock.
+- Guest checkout is the default; registration requires **phone, name, ID Type (Student/NID), and ID Number**. Cashier must verify physical ID.
+- Kitchen model: **Prepared in Kitchen** items sell from an active batch (no plate capacity tracking, just availability status); **Ready-Made** items sell from stock.
 - Per-order limits on kitchen items escalate to a real kitchen approval (no auto-approval).
 - Ready orders untouched for 45 minutes become **abandoned** automatically.
 - Purchases update stock and **weighted average cost**; sales/waste deduct stock.

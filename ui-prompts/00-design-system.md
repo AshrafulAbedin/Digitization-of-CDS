@@ -4,41 +4,49 @@
 
 ---
 
-You are building the UI for **OvenFresh CDS** — a point-of-sale and operations system for a busy university cafeteria (IUT Central Departmental Store, Bangladesh). It digitizes paper tokens, batch cooking, inventory, and owner reporting.
+You are building the UI for **OvenFresh CDS** — a point-of-sale and operations system for a busy university cafeteria. 
 
 ## Design direction
 
-Follow the conventions of modern industry POS products (Square POS, Toast, Lightspeed, Clover):
+Follow a **very minimal and lightweight** design direction. It should look professional and modern. 
+- **Utility-first.** Cashiers use this heavily. Zero visual noise.
+- **Light Mode Only.** The system strictly uses a light mode theme to maintain a clean, professional look.
 
-- **Utility-first, not decorative.** Cashiers use this 6 hours a day during rush hour. Zero visual noise, no gradients, no glassmorphism, no hover-to-reveal actions. Every action is a visible button.
-- **Density with hierarchy.** Compact rows and grids, but a clear 3-level type hierarchy (page title 18–20px semibold, section labels 12–13px uppercase muted, body 14px).
-- **Large touch targets.** Minimum 44×44px for anything tappable; primary action buttons 48–56px tall.
-- **Instant feedback.** Every action shows an immediate state change plus a compact toast (bottom-left, 2.5s). Destructive actions get an inline confirm, never a browser alert.
-- **Numbers are the product.** Prices, quantities, and token numbers use a tabular-numeric font style, right-aligned in tables, and are the largest elements in their card.
+## Color Palette
 
-## Visual language
+- **Primary (UI/Buttons):** `#1A1A1A` (Almost Black) - for primary CTAs (Add to cart, Pay Now).
+- **Secondary (Accents):** `#C8A87C` (Warm Gold/Beige) - for highlights, active tabs, and confirmations.
+- **Background (Main):** `#F8F6F3` (Off-White/Warm Paper) - reduces glare compared to pure white.
+- **Background (Cards/Modals):** `#FFFFFF` (Pure White) - for contrast against the main background.
+- **Success (Kitchen):** `#2E7D32` (Deep Muted Green) - for "Order Ready" or "Complete".
+- **Warning (Admin):** `#B76E6E` (Muted Dusty Rose) - for "Low Stock" or "Held Order".
+- **Text:** `#3A3A3A` for body.
+- **Labels/Placeholders:** `#8A8A8A`.
 
-- **Layout:** flat surfaces separated by 1px borders and background tint shifts — not shadows. 8px spacing grid. Cards use 8–10px radius (not 20px+ pills).
-- **Color:** neutral gray/warm-white workspace. One brand accent: **orange #EA580C** (buttons, active states, brand marks). Semantic colors reserved strictly for meaning: green = success/ready, amber = in-progress/warning, red = error/out-of-stock, blue = informational/new. Never use semantic colors decoratively.
-- **Dark mode:** full support via a class toggle; dark surfaces are neutral gray (#111827 family), not tinted brown.
-- **Typography:** Inter or system-ui. No serif, no rounded display fonts.
-- **Icons:** a single consistent set (Lucide or Material Symbols), 20px default, always paired with a text label on primary actions.
-- **Currency:** format as `৳120` (BDT taka sign), thousands separators, no decimals for whole amounts.
+## Typography
+
+Use **Inter** (Google Fonts) for primary UI (Headers, Buttons, Labels, Customer View).
+Use **JetBrains Mono** (Google Fonts) for Kitchen Order Numbers, Admin Item SKUs, and Timers.
+
+**Font Scale & Rules (strictly max 5 sizes):**
+- **Page Title / Total Price:** 24px (1.5rem), 700 (Bold), `#1A1A1A`. 
+- **Section Headers:** 18px (1.125rem), 600 (Semi-bold), `#1A1A1A`. 
+- **Body Text (Default):** 16px (1rem), 400 (Regular), `#3A3A3A`. 
+- **Labels / Metadata:** 14px (0.875rem), 400 (Regular), `#8A8A8A`. 
+- **Kitchen Urgent Alerts:** 48px (3rem), 700 (Bold), `#1A1A1A`. 
+
+**Additional Rules:**
+- **Buttons:** Use `text-transform: uppercase` and `letter-spacing: 0.5px` **ONLY** on Primary CTA buttons (Add to Cart, Pay Now). Never use uppercase for body text.
+- **Kitchen Display:** Minimum font size of 18px. Every single item name must be `#3A3A3A` on a `#F8F6F3` background for maximum contrast.
+- **Admin Data Tables:** Use 14px for table cells, but increase the `line-height` to 1.8.
 
 ## Tech constraints
 
-- React 19 + TypeScript + Tailwind CSS v4 (utility classes only, no inline styles, no CSS-in-JS).
+- React 19 + TypeScript + Tailwind CSS v4 (using the arbitrary values for custom colors, e.g., `bg-[#F8F6F3]`).
 - Named exports, functional components, hooks only.
-- All state comes from an existing shared store hook `useAppStore()` returning `{ state, dispatch }` — assume it exists; define TypeScript interfaces for whatever data the screen consumes.
-- Desktop-first (1366×768 minimum), degrade gracefully to tablet landscape. No mobile layouts needed.
-- Every screen is a full-height flex column: fixed header bar, scrollable content region. The app shell provides a station-switcher nav; screens must not add their own global nav.
+- All state comes from an existing shared store hook `useAppStore()` returning `{ state, dispatch }`.
+- Desktop-first (1366×768 minimum). Every screen is a full-height flex column: fixed header bar, scrollable content region. 
 
 ## Shared components to reuse across screens
 
-Define these once and reuse: `Button` (primary / secondary / ghost / danger, sm / md / lg), `StatusBadge` (semantic pill with icon + label), `StatTile` (label, big number, sub-caption), `DataTable` (sticky header, zebra-free, row hover, right-aligned numeric columns), `Modal` (center, max-w 480–640px, ESC + backdrop close, focus trap), `EmptyState` (icon, one-line explanation, optional action), `SearchInput` (leading icon, clear button).
-
-## Accessibility
-
-- WCAG AA contrast in both themes.
-- Full keyboard operation of the cashier flow (search, arrows, Enter to add, F-key shortcuts documented on-screen).
-- Focus rings always visible; `aria-live="polite"` on toast and queue updates.
+Define these once and reuse: `Button`, `StatusBadge`, `StatTile`, `DataTable`, `Modal`, `EmptyState`, `SearchInput`.

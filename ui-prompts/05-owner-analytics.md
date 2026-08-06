@@ -37,7 +37,7 @@ Content: a 12-column grid of cards.
 - Every chart has a text alternative: hover tooltips plus visible direct labels or an adjacent value table.
 - Values in tabular figures; axes and gridlines recessive (muted 1px).
 - No pie charts, no dual-axis charts, no 3D, no animation beyond 150ms ease on filter change.
-- Validate the categorical pair for colorblind separation and surface contrast in light AND dark mode.
+- Validate the categorical pair for colorblind separation and surface contrast in the light mode theme.
 
 ## Behavior
 

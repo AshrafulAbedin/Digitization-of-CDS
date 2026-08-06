@@ -8,7 +8,7 @@ Build the **customer-facing token display** for OvenFresh CDS: a passive full-sc
 
 ## Layout
 
-Permanent dark theme (dark neutral background, this screen ignores the theme toggle). Split into two vertical zones with a strong divider:
+Strictly uses the global light theme (#F8F6F3 background). Split into two vertical zones with a strong divider:
 
 ### "NOW SERVING" (left, ~60%)
 - Section title in green with a bell icon.
