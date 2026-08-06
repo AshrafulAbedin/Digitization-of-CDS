@@ -41,7 +41,7 @@ BEGIN
         NULL::INT AS stock,
         NULL::INT AS reorder_level
     FROM menu_item m
-    WHERE m.is_prepared_in_kitchen = TRUE AND m.is_purchasable = TRUE
+    WHERE m.is_prepared_in_kitchen = TRUE
 
     UNION ALL
 

@@ -22,7 +22,7 @@ RETURNS TABLE(menu_item_id INT, item_name TEXT, quantity_wasted INT) AS $$
 BEGIN
   UPDATE ready_made_daily_stock 
   SET quantity_wasted = quantity_received - quantity_sold 
-  WHERE stock_date = p_date AND quantity_wasted = 0;
+  WHERE stock_date = p_date AND ready_made_daily_stock.quantity_wasted = 0;
 
   RETURN QUERY
   SELECT r.menu_item_id, m.name AS item_name, r.quantity_wasted
