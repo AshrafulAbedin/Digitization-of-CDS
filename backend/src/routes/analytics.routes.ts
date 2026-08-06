@@ -68,7 +68,7 @@ analyticsRoutes.get('/orders-summary', async (req, res) => {
   const byDay = await pool.query(
     `SELECT order_timestamp::date AS day, COUNT(*) AS orders, COALESCE(SUM(total_paid), 0) AS revenue
        FROM customer_order
-      WHERE order_timestamp::date BETWEEN $1 AND $2 AND status <> 'abandoned'
+      WHERE order_timestamp::date BETWEEN $1 AND $2
       GROUP BY 1 ORDER BY 1`,
     [start, end],
   );
