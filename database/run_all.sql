@@ -5,6 +5,7 @@
 
 \echo '=== Dropping and recreating tables ==='
 \ir ddl/01_tables.sql
+\ir ddl/02_pos_escalation.sql
 
 \echo '=== Creating triggers ==='
 \ir triggers/01_order_status_timestamp.sql
