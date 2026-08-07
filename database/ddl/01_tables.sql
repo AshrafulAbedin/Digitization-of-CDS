@@ -149,3 +149,98 @@ CREATE TABLE customer_order (
     CONSTRAINT chk_dine_takeaway CHECK (dine_in_takeaway IN ('dine_in', 'takeaway'))
 );
 
+-- 9. kitchen_batch_issue
+CREATE TABLE kitchen_batch_issue (
+    batch_id     SERIAL PRIMARY KEY,
+    menu_item_id INTEGER NOT NULL REFERENCES menu_item(menu_item_id),
+    issued_at    TIMESTAMP DEFAULT NOW(),
+    status       VARCHAR(15) DEFAULT 'preparing',
+    notes        TEXT,
+    CONSTRAINT chk_batch_status CHECK (status IN ('preparing', 'available', 'exhausted'))
+);
+
+-- 10. kitchen_batch_issue_line
+CREATE TABLE kitchen_batch_issue_line (
+    line_id           SERIAL PRIMARY KEY,
+    batch_id          INTEGER NOT NULL REFERENCES kitchen_batch_issue(batch_id) ON DELETE CASCADE,
+    raw_material_id   INTEGER NOT NULL REFERENCES raw_material(raw_material_id),
+    quantity_taken    DECIMAL NOT NULL,
+    unit_cost_at_time DECIMAL NOT NULL
+);
+
+-- 11. kitchen_request (escalation for exceeding mode limit)
+CREATE TABLE kitchen_request (
+    request_id          SERIAL PRIMARY KEY,
+    order_id            INTEGER NOT NULL REFERENCES customer_order(order_id),
+    menu_item_id        INTEGER NOT NULL REFERENCES menu_item(menu_item_id),
+    requested_quantity  INTEGER NOT NULL,
+    status              VARCHAR(10) DEFAULT 'pending',
+    approved_quantity   INTEGER,
+    requested_at        TIMESTAMP DEFAULT NOW(),
+    responded_at        TIMESTAMP,
+    CONSTRAINT chk_request_status CHECK (status IN ('pending', 'approved', 'rejected'))
+);
+
+-- 12. stockout_request
+CREATE TABLE stockout_request (
+    request_id    SERIAL PRIMARY KEY,
+    menu_item_id  INTEGER NOT NULL REFERENCES menu_item(menu_item_id),
+    request_date  DATE NOT NULL DEFAULT CURRENT_DATE,
+    day_of_week   VARCHAR(10) GENERATED ALWAYS AS (
+        CASE EXTRACT(DOW FROM request_date)
+            WHEN 0 THEN 'Sunday'
+            WHEN 1 THEN 'Monday'
+            WHEN 2 THEN 'Tuesday'
+            WHEN 3 THEN 'Wednesday'
+            WHEN 4 THEN 'Thursday'
+            WHEN 5 THEN 'Friday'
+            WHEN 6 THEN 'Saturday'
+        END
+    ) STORED,
+    request_time  TIMESTAMP DEFAULT NOW(),
+    quantity      INTEGER DEFAULT 1
+);
+
+-- 13. stock_recommendation
+CREATE TABLE stock_recommendation (
+    recommendation_id    SERIAL PRIMARY KEY,
+    menu_item_id         INTEGER NOT NULL REFERENCES menu_item(menu_item_id),
+    target_day_of_week   VARCHAR(10) NOT NULL,
+    recommended_quantity INTEGER NOT NULL,
+    weeks_considered     INTEGER DEFAULT 4,
+    calculated_on        TIMESTAMP DEFAULT NOW(),
+    overridden_by        TEXT,
+    override_reason      TEXT,
+    is_active            BOOLEAN DEFAULT TRUE
+);
+
+-- 14. purchase_order
+CREATE TABLE purchase_order (
+    purchase_order_id SERIAL PRIMARY KEY,
+    vendor_id         INTEGER NOT NULL REFERENCES vendor(vendor_id),
+    order_date        DATE DEFAULT CURRENT_DATE,
+    total_amount      DECIMAL,
+    notes             TEXT
+);
+
+-- 15. purchase_order_line
+CREATE TABLE purchase_order_line (
+    line_id           SERIAL PRIMARY KEY,
+    purchase_order_id INTEGER NOT NULL REFERENCES purchase_order(purchase_order_id) ON DELETE CASCADE,
+    item_type         VARCHAR(15) NOT NULL,
+    item_id           INTEGER NOT NULL,
+    quantity          DECIMAL NOT NULL,
+    unit_cost         DECIMAL NOT NULL,
+    CONSTRAINT chk_item_type CHECK (item_type IN ('raw_material', 'ready_made'))
+);
+
+-- 16. order_line
+CREATE TABLE order_line (
+    order_line_id       SERIAL PRIMARY KEY,
+    order_id            INTEGER NOT NULL REFERENCES customer_order(order_id),
+    menu_item_id        INTEGER NOT NULL REFERENCES menu_item(menu_item_id),
+    batch_id            INTEGER REFERENCES kitchen_batch_issue(batch_id),
+    quantity            INTEGER NOT NULL DEFAULT 1,
+    unit_price_snapshot DECIMAL NOT NULL,
+    unit_cost_at_time   DECIMAL
+);

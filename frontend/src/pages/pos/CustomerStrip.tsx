@@ -17,6 +17,7 @@ export function CustomerStrip({ customer, onCustomer, inputRef }: CustomerStripP
   const [notFound, setNotFound] = useState(false);
   const [registering, setRegistering] = useState(false);
   const [regName, setRegName] = useState('');
+  const [regPhone, setRegPhone] = useState('');
   const [regIdType, setRegIdType] = useState<'student' | 'nid'>('student');
   const [regIdNumber, setRegIdNumber] = useState('');
   const [tokens, setTokens] = useState<ActiveOrder[] | null>(null);
@@ -44,16 +45,22 @@ export function CustomerStrip({ customer, onCustomer, inputRef }: CustomerStripP
 
   const register = async () => {
     try {
+      const finalPhone = regPhone.trim() || (/^01\d{9}$/.test(value.trim()) ? value.trim() : null);
+      if (!finalPhone) {
+        toast('Phone number is required', 'error');
+        return;
+      }
+      
       const { customer_id } = await apiPost<{ customer_id: number }>('/customers/register', {
         name: regName,
-        phone: /^01\d{9}$/.test(value.trim()) ? value.trim() : null,
+        phone: finalPhone,
         idType: regIdType,
         idNumber: regIdNumber || value.trim(),
       });
       onCustomer({
         customer_id,
         name: regName,
-        phone: value.trim() || null,
+        phone: finalPhone,
         id_type: regIdType,
         id_number: regIdNumber || value.trim(),
         is_temporary: false,
@@ -140,6 +147,12 @@ export function CustomerStrip({ customer, onCustomer, inputRef }: CustomerStripP
             value={regName}
             onChange={(e) => setRegName(e.target.value)}
             placeholder="Full name"
+            className="h-9 w-full rounded-lg border border-[#d9d4cc] px-3 text-sm outline-none focus:border-gold"
+          />
+          <input
+            value={regPhone}
+            onChange={(e) => setRegPhone(e.target.value)}
+            placeholder="Phone number (01...)"
             className="h-9 w-full rounded-lg border border-[#d9d4cc] px-3 text-sm outline-none focus:border-gold"
           />
           <div className="flex gap-2">
