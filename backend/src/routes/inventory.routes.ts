@@ -178,3 +178,13 @@ inventoryRoutes.post('/daily-stock/end-of-day', async (req, res) => {
   ]);
   res.json(result.rows);
 });
+
+inventoryRoutes.patch('/menu-items/:id/price', async (req, res) => {
+  const { id } = req.params;
+  const { price } = req.body;
+  const result = await pool.query('SELECT update_menu_item_price($1, $2) AS new_price', [
+    id,
+    price,
+  ]);
+  res.json(result.rows[0]);
+});

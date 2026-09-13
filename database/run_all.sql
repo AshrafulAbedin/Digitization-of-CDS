@@ -22,6 +22,7 @@
 \ir functions/06_abandoned_orders.sql
 \ir functions/07_daily_stock.sql
 \ir functions/08_analytics.sql
+\ir functions/09_inventory_edits.sql
 
 \echo '=== Loading seed data ==='
 \ir seed/01_seed_data.sql

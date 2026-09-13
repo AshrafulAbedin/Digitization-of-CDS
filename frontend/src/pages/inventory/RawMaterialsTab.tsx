@@ -3,6 +3,7 @@ import type { RawMaterial } from '../../types';
 import { fmtTaka } from '../../types';
 import { DataTable, type Column } from '../../components/ui/DataTable';
 import { StatusBadge } from '../../components/ui/StatusBadge';
+import { Button } from '../../components/ui/Button';
 import { SearchInput } from '../../components/ui/SearchInput';
 
 export function materialStatus(m: { current_stock: number; reorder_level: number }) {
@@ -41,6 +42,28 @@ export function RawMaterialsTab({ materials }: { materials: RawMaterial[] }) {
         );
       },
       sortValue: (m) => m.current_stock / Math.max(1, m.reorder_level),
+    },
+    {
+      key: 'actions',
+      header: '',
+      render: (m) => (
+        <Button
+          size="sm"
+          variant="ghost"
+          onClick={() => {
+            const newLevel = prompt(`Enter new reorder level for ${m.name}:`, m.reorder_level.toString());
+            if (newLevel && !isNaN(Number(newLevel)) && Number(newLevel) >= 0) {
+              fetch(`/api/inventory/raw-materials/${m.raw_material_id}/reorder-level`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ reorderLevel: Number(newLevel) }),
+              }).then(() => alert('Reorder level updated. Refresh page to see changes.'));
+            }
+          }}
+        >
+          Edit reorder
+        </Button>
+      ),
     },
   ];
 

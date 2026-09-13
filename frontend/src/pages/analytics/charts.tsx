@@ -44,40 +44,62 @@ export function BarChart({ bars, money = true }: { bars: Bar[]; money?: boolean 
   );
 }
 
-/** Horizontal ranked bar list (top sellers / missed demand). */
 export function BarList({
   rows,
   hue = HUE_A,
   valueLabel,
+  urgencyMode = false,
 }: {
   rows: { name: string; value: number; detail?: string }[];
   hue?: string;
   valueLabel: (v: number) => string;
+  urgencyMode?: boolean;
 }) {
   const max = Math.max(...rows.map((r) => r.value), 1);
   return (
-    <ol className="space-y-2">
-      {rows.map((r, i) => (
-        <li key={r.name}>
-          <div className="flex items-baseline justify-between gap-2 text-sm">
-            <span className="min-w-0 truncate text-body">
-              <span className="tabular mr-1.5 text-label">{i + 1}.</span>
-              {r.name}
-            </span>
-            <span className="tabular whitespace-nowrap text-body">
-              {valueLabel(r.value)}
-              {r.detail && <span className="ml-1.5 text-label">{r.detail}</span>}
-            </span>
-          </div>
-          <div className="mt-1 h-2 overflow-hidden rounded-[4px] bg-black/5">
-            <div className="h-full rounded-[4px]" style={{ width: `${(r.value / max) * 100}%`, background: hue }} />
-          </div>
-        </li>
-      ))}
+    <ol className="space-y-3">
+      {rows.map((r, i) => {
+        let textSize = 'text-sm';
+        let fontWe = 'font-normal';
+        let opacity = 1;
+        let rankColor = hue;
+
+        if (i === 0) {
+          textSize = 'text-lg';
+          fontWe = 'font-bold';
+          if (urgencyMode) rankColor = '#d97706';
+        } else if (i === 1) {
+          textSize = 'text-base';
+          opacity = 0.85;
+        } else if (i === 2) {
+          textSize = 'text-sm';
+          opacity = 0.7;
+        } else {
+          textSize = 'text-xs';
+          opacity = 0.5;
+        }
+
+        return (
+          <li key={r.name}>
+            <div className={`flex items-baseline justify-between gap-2 ${textSize} ${fontWe}`}>
+              <span className="min-w-0 truncate text-body">
+                <span className="tabular mr-1.5 text-label">{i + 1}.</span>
+                {r.name}
+              </span>
+              <span className="tabular whitespace-nowrap text-body">
+                {valueLabel(r.value)}
+                {r.detail && <span className="ml-1.5 text-label font-normal text-sm">{r.detail}</span>}
+              </span>
+            </div>
+            <div className={`mt-1 overflow-hidden rounded-[4px] bg-black/5 ${i === 0 ? 'h-3' : i === 1 ? 'h-2.5' : 'h-2'}`}>
+              <div className="h-full rounded-[4px]" style={{ width: `${(r.value / max) * 100}%`, background: rankColor, opacity }} />
+            </div>
+          </li>
+        );
+      })}
     </ol>
   );
 }
-
 /** Two-category stacked horizontal bar with legend + counts as text. */
 export function MixBar({
   a,

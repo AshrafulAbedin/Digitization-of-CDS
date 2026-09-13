@@ -93,3 +93,31 @@ analyticsRoutes.get('/orders-summary', async (req, res) => {
   );
   res.json({ byDay: byDay.rows, mix: mix.rows[0], vendors: vendors.rows });
 });
+
+analyticsRoutes.get('/sales-by-day', async (req, res) => {
+  const start = (req.query.start as string) || today();
+  const end = (req.query.end as string) || today();
+  const result = await pool.query('SELECT * FROM get_sales_by_day($1, $2)', [start, end]);
+  res.json(result.rows);
+});
+
+analyticsRoutes.get('/payment-mix', async (req, res) => {
+  const start = (req.query.start as string) || today();
+  const end = (req.query.end as string) || today();
+  const result = await pool.query('SELECT * FROM get_payment_mix($1, $2)', [start, end]);
+  res.json(result.rows);
+});
+
+analyticsRoutes.get('/service-mix', async (req, res) => {
+  const start = (req.query.start as string) || today();
+  const end = (req.query.end as string) || today();
+  const result = await pool.query('SELECT * FROM get_service_mix($1, $2)', [start, end]);
+  res.json(result.rows);
+});
+
+analyticsRoutes.get('/waste-cost', async (req, res) => {
+  const start = (req.query.start as string) || today();
+  const end = (req.query.end as string) || today();
+  const result = await pool.query('SELECT get_waste_cost($1, $2) AS cost', [start, end]);
+  res.json(result.rows[0]);
+});

@@ -1,6 +1,6 @@
 import { useCallback, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { apiGet } from '../../api/client';
+import { apiGet, apiPost } from '../../api/client';
 import type { OrdersSummary, ProfitReport, TopRequested, TopSeller, WasteRow } from '../../types';
 import { fmtTaka } from '../../types';
 import { usePolling } from '../../hooks/usePolling';
@@ -62,7 +62,7 @@ export function OwnerDashboard() {
     };
   }, [range]);
 
-  const { data } = usePolling<Payload>(fetchAll, 30000);
+  const { data } = usePolling<Payload>(fetchAll, 5000);
 
   const orderCount = data?.summary.byDay.reduce((s, d) => s + Number(d.orders), 0) ?? 0;
   const prevOrderCount = data?.prevSummary.byDay.reduce((s, d) => s + Number(d.orders), 0) ?? 0;
@@ -80,6 +80,9 @@ export function OwnerDashboard() {
       value: Number(d.revenue),
     })) ?? [];
 
+  const cost = data?.profit?.total_cost ?? 0;
+  const prevCost = data?.prevProfit?.total_cost ?? 0;
+
   const tiles = [
     {
       label: 'Net sales',
@@ -87,14 +90,27 @@ export function OwnerDashboard() {
       sub: `${orderCount} orders`,
       chip: <DeltaChip now={revenue} prev={prevRevenue} />,
       cls: 'text-ink',
+      width: 'col-span-2 row-span-1',
+      large: true,
     },
     {
-      label: 'Est. profit',
-      value: fmtTaka(profit),
-      sub: 'after ingredient + waste cost',
-      chip: <DeltaChip now={profit} prev={prevProfit} />,
-      cls: profit >= 0 ? 'text-kitchen' : 'text-warn',
+      label: 'Cost',
+      value: fmtTaka(cost),
+      sub: 'ingredients + waste',
+      chip: <DeltaChip now={cost} prev={prevCost} goodWhenDown />,
+      cls: 'text-ink',
     },
+    ...(range === 'today'
+      ? []
+      : [
+          {
+            label: 'Est. profit',
+            value: fmtTaka(profit),
+            sub: 'after ingredient + waste cost',
+            chip: <DeltaChip now={profit} prev={prevProfit} />,
+            cls: profit >= 0 ? 'text-kitchen' : 'text-warn',
+          },
+        ]),
     {
       label: 'Average order',
       value: fmtTaka(avgOrder),
@@ -126,7 +142,30 @@ export function OwnerDashboard() {
           value={range}
           onChange={setRange}
         />
-        <Button variant="ghost" size="sm" onClick={() => window.print()}>
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => {
+            const csv = [
+              ['Metric', 'Value'],
+              ['Revenue', revenue],
+              ['Cost', data?.profit?.total_cost ?? 0],
+              ['Profit', profit],
+              ['Orders', orderCount],
+              ['Avg Order', avgOrder],
+              ['Waste Cost', wasteCost],
+            ]
+              .map((r) => r.join(','))
+              .join('\n');
+            const blob = new Blob([csv], { type: 'text/csv' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `analytics-export-${range}.csv`;
+            a.click();
+            URL.revokeObjectURL(url);
+          }}
+        >
           Export report
         </Button>
       </header>
@@ -134,9 +173,9 @@ export function OwnerDashboard() {
       <main className="min-h-0 flex-1 space-y-4 overflow-y-auto p-4">
         <div className="grid grid-cols-2 gap-4 xl:grid-cols-4">
           {tiles.map((t) => (
-            <div key={t.label} className="rounded-xl border border-[#e7e2da] bg-white p-4">
+            <div key={t.label} className={`rounded-xl border border-[#e7e2da] bg-white p-4 ${t.width || ''}`}>
               <div className="text-sm text-label">{t.label}</div>
-              <div className={`tabular mt-1 text-2xl font-bold ${t.cls}`}>
+              <div className={`tabular mt-1 font-bold ${t.cls} ${t.large ? 'text-4xl' : 'text-2xl'}`}>
                 {t.value}
                 {t.chip}
               </div>
@@ -217,6 +256,7 @@ export function OwnerDashboard() {
                 }))}
                 hue="#c98a2e"
                 valueLabel={(v) => `${v} requests`}
+                urgencyMode={true}
               />
             )}
           </Card>
@@ -254,6 +294,26 @@ export function OwnerDashboard() {
                 </div>
               </>
             )}
+          </Card>
+        </div>
+
+        <div className="grid grid-cols-1 gap-4">
+          <Card title="Tomorrow's Stock Recommendation" sub="Calculated based on recent demand patterns.">
+            <div className="flex items-center gap-4 mb-4">
+              <Button
+                variant="primary"
+                onClick={async () => {
+                  try {
+                    const res = await apiPost<{ recommendation: { name: string; suggested_qty: number; type: string }[] }>('/analytics/stock-recommendation');
+                    alert('Recommendation: \n' + res.recommendation.map(r => `${r.name}: ${r.suggested_qty} (${r.type})`).join('\n'));
+                  } catch (e) {
+                    alert('Failed to get recommendation');
+                  }
+                }}
+              >
+                Generate Recommendation
+              </Button>
+            </div>
           </Card>
         </div>
       </main>

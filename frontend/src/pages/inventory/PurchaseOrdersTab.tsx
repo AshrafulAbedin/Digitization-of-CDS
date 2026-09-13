@@ -77,16 +77,21 @@ export function PurchaseOrdersTab({ vendors, materials, readyMade, orders, onCha
     }
   };
 
+  const [notes, setNotes] = useState('');
+  const [submitError, setSubmitError] = useState<string | null>(null);
+
   const receive = async () => {
+    setSubmitError(null);
     try {
-      await apiPost('/inventory/purchase-orders', { vendorId, lines });
+      await apiPost('/inventory/purchase-orders', { vendorId, lines, notes });
       toast('Purchase received — stock and average cost updated');
       setLines([]);
       setVendorId('');
+      setNotes('');
       setBuilderOpen(false);
       onChanged();
     } catch (e) {
-      toast(e instanceof Error ? e.message : 'Failed to receive purchase', 'error');
+      setSubmitError(e instanceof Error ? e.message : 'Failed to receive purchase');
     }
   };
 
@@ -106,6 +111,12 @@ export function PurchaseOrdersTab({ vendors, materials, readyMade, orders, onCha
               ✕
             </Button>
           </div>
+          
+          {submitError && (
+            <div className="mt-3 rounded bg-warn/10 p-3 text-sm font-medium text-warn">
+              {submitError}
+            </div>
+          )}
 
           <div className="mt-3 flex flex-wrap items-center gap-2">
             <select value={vendorId} onChange={(e) => setVendorId(Number(e.target.value))} className={inputCls}>
@@ -116,11 +127,12 @@ export function PurchaseOrdersTab({ vendors, materials, readyMade, orders, onCha
                 </option>
               ))}
             </select>
-            <button className="text-sm font-medium text-[#8a6a3a] underline" onClick={() => setNewVendorOpen((v) => !v)}>
+            <input value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Notes (optional)" className={`${inputCls} flex-1`} />
+            <button className="text-sm font-medium text-[#8a6a3a] underline whitespace-nowrap" onClick={() => setNewVendorOpen((v) => !v)}>
               + new vendor
             </button>
             {newVendorOpen && (
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 w-full mt-2">
                 <input value={newVendorName} onChange={(e) => setNewVendorName(e.target.value)} placeholder="Vendor name" className={inputCls} />
                 <input value={newVendorPhone} onChange={(e) => setNewVendorPhone(e.target.value)} placeholder="Phone" className={inputCls} />
                 <Button size="sm" variant="secondary" disabled={!newVendorName} onClick={addVendor}>
@@ -130,7 +142,7 @@ export function PurchaseOrdersTab({ vendors, materials, readyMade, orders, onCha
             )}
           </div>
 
-          <div className="mt-3 flex flex-wrap items-end gap-2">
+          <div className="mt-4 flex flex-wrap items-end gap-2">
             <select
               value={lineType}
               onChange={(e) => {
@@ -180,11 +192,13 @@ export function PurchaseOrdersTab({ vendors, materials, readyMade, orders, onCha
             </div>
           )}
 
-          <div className="mt-3 flex items-center gap-3">
+          <div className="mt-4 flex items-center gap-3 border-t border-[#e7e2da] pt-4">
             <Button variant="primary" disabled={vendorId === '' || lines.length === 0} onClick={receive}>
-              Receive purchase
+              Submit Purchase Order
             </Button>
-            <span className="text-sm text-label">Adds stock and recalculates weighted average cost.</span>
+            <Button variant="ghost" onClick={() => setBuilderOpen(false)}>
+              Cancel
+            </Button>
           </div>
         </div>
       )}

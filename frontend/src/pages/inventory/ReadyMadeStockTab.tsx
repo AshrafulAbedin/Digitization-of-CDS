@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import type { ReadyMadeStockRow } from '../../types';
 import { fmtTaka } from '../../types';
-import { apiPost } from '../../api/client';
+import { apiPost, apiPatch } from '../../api/client';
 import { DataTable, type Column } from '../../components/ui/DataTable';
 import { StatusBadge } from '../../components/ui/StatusBadge';
 import { Stepper } from '../../components/ui/Stepper';
@@ -62,17 +62,57 @@ export function ReadyMadeStockTab({ stock, onChanged }: Props) {
       key: 'actions',
       header: '',
       render: (r) => (
-        <Button
-          size="sm"
-          variant="ghost"
-          onClick={() => {
-            setWasteFor(r);
-            setQty(1);
-            setReason('expired');
-          }}
-        >
-          Record waste
-        </Button>
+        <div className="flex gap-2">
+          {!r.expires_daily && (
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={async () => {
+                const newPrice = prompt(`Enter new selling price for ${r.name} (must be >= ${fmtTaka(r.average_unit_cost)}):`, r.selling_price.toString());
+                if (newPrice && !isNaN(Number(newPrice)) && Number(newPrice) > 0) {
+                  try {
+                    await apiPatch(`/inventory/menu-items/${r.menu_item_id}/price`, { price: Number(newPrice) });
+                    toast('Price updated successfully');
+                    onChanged();
+                  } catch (e) {
+                    alert(e instanceof Error ? e.message : 'Price update failed');
+                  }
+                }
+              }}
+            >
+              Edit price
+            </Button>
+          )}
+          <Button
+            size="sm"
+            variant="ghost"
+            onClick={async () => {
+              const newLevel = prompt(`Enter new reorder level for ${r.name}:`, r.reorder_level.toString());
+              if (newLevel && !isNaN(Number(newLevel)) && Number(newLevel) >= 0) {
+                try {
+                  await apiPatch(`/inventory/menu-items/${r.menu_item_id}/reorder-level`, { reorderLevel: Number(newLevel) });
+                  toast('Reorder level updated');
+                  onChanged();
+                } catch (e) {
+                  alert(e instanceof Error ? e.message : 'Update failed');
+                }
+              }
+            }}
+          >
+            Edit reorder
+          </Button>
+          <Button
+            size="sm"
+            variant="ghost"
+            onClick={() => {
+              setWasteFor(r);
+              setQty(1);
+              setReason('expired');
+            }}
+          >
+            Record waste
+          </Button>
+        </div>
       ),
     },
   ];
