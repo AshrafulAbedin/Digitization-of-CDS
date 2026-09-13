@@ -159,9 +159,18 @@ export function CashierPOS() {
         (l.product.type === 'PREPARED' && l.approvedCeiling == null && l.qty > l.product.mode_limit),
     );
     if (lines.length === 0 || blocked) return;
+    
+    let cid = customer?.customer_id;
+    const rawInput = customerRef.current?.value.trim();
+
     try {
+      if (!cid && rawInput) {
+        const { customer_id } = await apiPost<{ customer_id: number }>('/customers/temporary', { name: rawInput });
+        cid = customer_id;
+      }
+
       const { order_id } = await apiPost<{ order_id: number }>('/orders', {
-        customerId: customer?.customer_id ?? 1,
+        customerId: cid ?? 1,
         paymentMethod: payment,
         dineTakeaway,
         items: lines.map((l) => ({

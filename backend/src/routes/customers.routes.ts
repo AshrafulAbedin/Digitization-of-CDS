@@ -28,6 +28,15 @@ customerRoutes.post('/register', async (req, res) => {
   res.status(201).json(result.rows[0]);
 });
 
+customerRoutes.post('/temporary', async (req, res) => {
+  const { name } = req.body;
+  const result = await pool.query(
+    'INSERT INTO customer (name, is_temporary) VALUES ($1, TRUE) RETURNING customer_id',
+    [name]
+  );
+  res.status(201).json(result.rows[0]);
+});
+
 customerRoutes.get('/:id/active-orders', async (req, res) => {
   const result = await pool.query('SELECT * FROM get_active_orders($1)', [req.params.id]);
   res.json(result.rows);

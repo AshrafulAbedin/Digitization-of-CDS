@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import type { ActiveOrder, Customer } from '../../types';
 import { apiGet, apiPost } from '../../api/client';
 import { Button } from '../../components/ui/Button';
@@ -21,6 +21,14 @@ export function CustomerStrip({ customer, onCustomer, inputRef }: CustomerStripP
   const [regIdType, setRegIdType] = useState<'student' | 'nid'>('student');
   const [regIdNumber, setRegIdNumber] = useState('');
   const [tokens, setTokens] = useState<ActiveOrder[] | null>(null);
+
+  useEffect(() => {
+    if (customer === null) {
+      setValue('');
+      setNotFound(false);
+      setRegistering(false);
+    }
+  }, [customer]);
 
   const lookup = async (raw: string) => {
     const v = raw.trim();
