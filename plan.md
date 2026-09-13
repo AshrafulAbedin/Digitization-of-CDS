@@ -25,8 +25,8 @@ calls those functions and returns JSON. The React frontend consumes the API.
 | Triggers            | ✅ Complete | order status timestamp, purchase stock update, batch deduction, sale stock deduction |
 | PL/pgSQL Functions  | ✅ Complete | 20+ functions across 8 files                         |
 | Seed Data           | ✅ Complete | `database/seed/01_seed_data.sql`                     |
-| Backend             | ❌ Missing  | Built at `backend/`                                  |
-| Frontend            | ❌ Missing  | Built at `frontend/` from the `ui-prompts/` spec pack |
+| Backend             | ✅ Complete | Built at `backend/`                                  |
+| Frontend            | ✅ Complete | Built at `frontend/` from the `ui-prompts/` spec pack |
 
 --------
 
