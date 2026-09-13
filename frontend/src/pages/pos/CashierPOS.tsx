@@ -12,12 +12,6 @@ import { Ticket } from './Ticket';
 import { ParkedDrawer } from './ParkedDrawer';
 import { PayModal } from './PayModal';
 
-const batchDot: Record<Batch['status'], string> = {
-  preparing: 'bg-gold',
-  available: 'bg-kitchen',
-  exhausted: 'bg-warn',
-};
-
 export function CashierPOS() {
   const toast = useToast();
   const { data: products } = usePolling<Product[]>(() => apiGet('/products'), 5000);
@@ -39,11 +33,11 @@ export function CashierPOS() {
   const [paidToken, setPaidToken] = useState<number | null>(null);
   const [paidLines, setPaidLines] = useState<TicketLine[]>([]);
   const [parkedReminder, setParkedReminder] = useState(false);
+
   const searchRef = useRef<HTMLInputElement>(null);
   const customerRef = useRef<HTMLInputElement>(null);
   const nextParkedId = useRef(1);
 
-  // Reminder banner for parked tickets waiting > 5 min.
   useEffect(() => {
     const id = setInterval(
       () => setParkedReminder(parked.some((p) => Date.now() - p.parkedAt > 5 * 60 * 1000)),
@@ -55,9 +49,7 @@ export function CashierPOS() {
   const addLine = useCallback((p: Product) => {
     setLines((ls) => {
       const existing = ls.find((l) => l.product.id === p.id);
-      if (existing) {
-        return ls.map((l) => (l.product.id === p.id ? { ...l, qty: l.qty + 1 } : l));
-      }
+      if (existing) return ls.map((l) => (l.product.id === p.id ? { ...l, qty: l.qty + 1 } : l));
       return [...ls, { product: p, qty: 1 }];
     });
   }, []);
@@ -68,7 +60,6 @@ export function CashierPOS() {
   const removeLine = (productId: number) =>
     setLines((ls) => ls.filter((l) => l.product.id !== productId));
 
-  // Escalation: send request, then poll until the kitchen answers.
   const escalate = async (productId: number) => {
     const line = lines.find((l) => l.product.id === productId);
     if (!line) return;
@@ -77,9 +68,7 @@ export function CashierPOS() {
         menuItemId: productId,
         requestedQty: line.qty,
       });
-      setLines((ls) =>
-        ls.map((l) => (l.product.id === productId ? { ...l, pendingRequestId: request_id } : l)),
-      );
+      setLines((ls) => ls.map((l) => (l.product.id === productId ? { ...l, pendingRequestId: request_id } : l)));
       const poll = setInterval(async () => {
         try {
           const r = await apiGet<KitchenRequestStatus>(`/kitchen/requests/${request_id}`);
@@ -103,18 +92,10 @@ export function CashierPOS() {
                   : l,
               ),
             );
-            toast(`Kitchen rejected extra ${line.product.name} — reverted to limit`, 'error');
+            toast(`Kitchen rejected extra ${line.product.name}`, 'error');
           }
-          setTimeout(
-            () =>
-              setLines((ls) =>
-                ls.map((l) => (l.product.id === productId ? { ...l, flash: undefined } : l)),
-              ),
-            1200,
-          );
-        } catch {
-          /* transient poll error — keep trying */
-        }
+          setTimeout(() => setLines((ls) => ls.map((l) => (l.product.id === productId ? { ...l, flash: undefined } : l))), 1200);
+        } catch { /* keep polling */ }
       }, 3000);
     } catch (e) {
       toast(e instanceof Error ? e.message : 'Escalation failed', 'error');
@@ -131,20 +112,14 @@ export function CashierPOS() {
   };
 
   const park = () => {
-    setParked((ps) => [
-      ...ps,
-      { id: nextParkedId.current++, lines, customer, dineTakeaway, parkedAt: Date.now() },
-    ]);
+    setParked((ps) => [...ps, { id: nextParkedId.current++, lines, customer, dineTakeaway, parkedAt: Date.now() }]);
     setLines([]);
     setCustomer(null);
     toast('Order parked');
   };
 
   const resume = (t: ParkedTicket) => {
-    if (lines.length > 0) {
-      toast('Finish or park the current ticket first', 'error');
-      return;
-    }
+    if (lines.length > 0) { toast('Finish or park the current ticket first', 'error'); return; }
     setParked((ps) => ps.filter((p) => p.id !== t.id));
     setLines(t.lines);
     setCustomer(t.customer);
@@ -153,11 +128,7 @@ export function CashierPOS() {
   };
 
   const charge = async () => {
-    const blocked = lines.some(
-      (l) =>
-        l.pendingRequestId != null ||
-        (l.product.type === 'PREPARED' && l.approvedCeiling == null && l.qty > l.product.mode_limit),
-    );
+    const blocked = lines.some((l) => l.pendingRequestId != null || (l.product.type === 'PREPARED' && l.approvedCeiling == null && l.qty > l.product.mode_limit));
     if (lines.length === 0 || blocked) return;
     try {
       const { order_id } = await apiPost<{ order_id: number }>('/orders', {
@@ -187,90 +158,83 @@ export function CashierPOS() {
     setDineTakeaway('dine_in');
   };
 
-  // Keyboard shortcuts.
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       const inField = ['INPUT', 'SELECT', 'TEXTAREA'].includes((e.target as HTMLElement).tagName);
-      if (e.key === '/' && !inField) {
-        e.preventDefault();
-        searchRef.current?.focus();
-      } else if (e.key === 'F2') {
-        e.preventDefault();
-        customerRef.current?.focus();
-      } else if (e.key === 'F4') {
-        e.preventDefault();
-        if (lines.length > 0) park();
-      } else if (e.key === 'F9') {
-        e.preventDefault();
-        if (lines.length > 0) charge();
-      } else if (e.key === '?' && !inField) {
-        setHelpOpen(true);
-      }
+      if (e.key === '/' && !inField) { e.preventDefault(); searchRef.current?.focus(); }
+      else if (e.key === 'F2') { e.preventDefault(); customerRef.current?.focus(); }
+      else if (e.key === 'F4') { e.preventDefault(); if (lines.length > 0) park(); }
+      else if (e.key === 'F9') { e.preventDefault(); if (lines.length > 0) charge(); }
+      else if (e.key === '?' && !inField) { setHelpOpen(true); }
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   });
 
   const preparingCount = board?.filter((o) => o.status === 'preparing').length ?? 0;
-  const todaysOrders =
-    (nextTokenRow?.next_token ?? 1) - 1; /* order ids are sequential from setup */
+  const todaysOrders = (nextTokenRow?.next_token ?? 1) - 1;
 
   return (
-    <div className="flex h-full flex-col">
-      <header className="flex h-14 items-center justify-between border-b border-[#e7e2da] bg-white px-4">
-        <div className="flex items-center gap-3">
-          <Link to="/" className="font-bold text-ink hover:underline">
-            OvenFresh
+    <div className="flex h-full flex-col bg-paper">
+      <header className="flex h-20 items-center justify-between border-b border-hairline bg-white/80 backdrop-blur-xl px-6 z-20">
+        <div className="flex items-center gap-4">
+          <Link to="/" className="flex items-center gap-2.5 hover:opacity-90 transition-opacity">
+            <div className="bg-gradient-to-br from-emerald-400 to-teal-500 text-white p-2.5 rounded-2xl text-xl shadow-lg shadow-emerald-500/30 flex items-center justify-center">
+              🍽️
+            </div>
+            <div className="flex flex-col">
+              <span className="font-display font-extrabold text-xl tracking-tight text-ink leading-none">
+                Oven<span className="text-emerald-600">Fresh</span>
+              </span>
+              <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-emerald-600 mt-1">
+                Cashier
+              </span>
+            </div>
           </Link>
+          <div className="h-8 w-px bg-hairline" />
           <Clock />
         </div>
-        <div className="flex items-center gap-5 text-sm text-label">
-          <span>
-            <span className="tabular font-semibold text-ink">{todaysOrders}</span> orders
-          </span>
-          <span>
-            <span className="tabular font-semibold text-ink">{preparingCount}</span> preparing
-          </span>
+
+        <div className="flex items-center gap-5 text-sm text-body font-medium">
+          <span><strong className="text-ink font-mono font-bold">{todaysOrders}</strong> orders today</span>
+          <span><strong className="text-emerald-700 font-mono font-bold">{preparingCount}</strong> preparing</span>
           <div className="relative">
             <button
-              className="rounded-lg px-2 py-1 hover:bg-black/5"
+              className="rounded-xl px-3 py-1.5 bg-emerald-100 border border-emerald-300 hover:bg-emerald-200 transition-colors font-bold text-emerald-800"
               onClick={() => setBatchPopover((v) => !v)}
             >
-              <span className="tabular font-semibold text-ink">{batches?.length ?? 0}</span> active
-              batches
+              <span className="font-mono">{batches?.length ?? 0}</span> active batches
             </button>
             {batchPopover && (
-              <div className="absolute top-full right-0 z-30 mt-1 w-64 rounded-xl border border-[#e7e2da] bg-white p-2 shadow-lg">
+              <div className="absolute top-full right-0 z-30 mt-2 w-72 rounded-2xl border border-hairline bg-white p-3 shadow-2xl">
                 {(batches ?? []).map((b) => (
-                  <div key={b.id} className="flex items-center gap-2 px-2 py-1.5">
-                    <span className={`h-2.5 w-2.5 rounded-full ${batchDot[b.status]}`} />
-                    <span className="font-mono text-sm text-body">#{b.id}</span>
-                    <span className="flex-1 truncate text-sm text-body">{b.name}</span>
-                    <span className="text-xs text-label">{b.status}</span>
+                  <div key={b.id} className="flex items-center gap-3 px-2 py-2 rounded-lg hover:bg-emerald-50">
+                    <span className={`h-2.5 w-2.5 rounded-full ${b.status === 'available' ? 'bg-emerald-500' : b.status === 'preparing' ? 'bg-orange-400 animate-pulse' : 'bg-slate-400'}`} />
+                    <span className="font-mono text-xs text-label">#{b.id}</span>
+                    <span className="flex-1 truncate text-sm font-semibold text-ink">{b.name}</span>
+                    <span className="text-xs text-label uppercase">{b.status}</span>
                   </div>
                 ))}
-                {(batches ?? []).length === 0 && (
-                  <div className="px-2 py-1.5 text-sm text-label">No active batches</div>
-                )}
+                {(batches ?? []).length === 0 && <div className="px-2 py-2 text-sm text-label">No active batches</div>}
               </div>
             )}
           </div>
         </div>
+
         <div className="flex items-center gap-2">
           <button
-            className="rounded-lg border border-[#d9d4cc] px-2.5 py-1 text-sm text-label hover:border-ink"
             onClick={() => setHelpOpen(true)}
-            aria-label="Keyboard shortcuts"
+            className="rounded-xl border border-hairline bg-white px-3 py-1.5 text-sm font-bold text-body hover:border-emerald-400 hover:text-emerald-700 transition-colors"
           >
             ?
           </button>
           <button
-            className="relative rounded-lg border border-[#d9d4cc] px-3 py-1.5 text-sm font-medium text-body hover:border-ink"
             onClick={() => setDrawerOpen(true)}
+            className="relative rounded-xl bg-gradient-to-r from-orange-500 to-pink-500 px-4 py-1.5 text-sm font-bold text-white shadow-lg shadow-orange-500/30 hover:shadow-xl transition-all"
           >
             Parked
             {parked.length > 0 && (
-              <span className="absolute -top-1.5 -right-1.5 flex h-5 w-5 items-center justify-center rounded-full bg-gold text-xs font-bold text-white">
+              <span className="absolute -top-1.5 -right-1.5 flex h-5 w-5 items-center justify-center rounded-full bg-white text-xs font-bold text-orange-600 shadow-sm">
                 {parked.length}
               </span>
             )}
@@ -279,12 +243,7 @@ export function CashierPOS() {
       </header>
 
       <div className="flex min-h-0 flex-1">
-        <Catalog
-          products={(products ?? []).filter((p) => p)}
-          onAdd={(p) => (productAvailable(p) ? addLine(p) : undefined)}
-          onStockout={logStockout}
-          searchRef={searchRef}
-        />
+        <Catalog products={(products ?? []).filter((p) => p)} onAdd={(p) => (productAvailable(p) ? addLine(p) : undefined)} onStockout={logStockout} searchRef={searchRef} />
         <Ticket
           nextToken={nextTokenRow?.next_token ?? null}
           lines={lines}
@@ -309,16 +268,10 @@ export function CashierPOS() {
 
       <Modal open={helpOpen} onClose={() => setHelpOpen(false)} title="Keyboard shortcuts">
         <dl className="space-y-2 text-sm">
-          {[
-            ['/', 'Focus search'],
-            ['F2', 'Customer field'],
-            ['F4', 'Park order'],
-            ['F9', 'Charge'],
-            ['Esc', 'Close modal'],
-          ].map(([k, d]) => (
+          {[['/', 'Focus search'], ['F2', 'Customer field'], ['F4', 'Park order'], ['F9', 'Charge'], ['Esc', 'Close modal']].map(([k, d]) => (
             <div key={k} className="flex items-center justify-between">
-              <dt className="rounded-md border border-[#d9d4cc] bg-paper px-2 py-0.5 font-mono">{k}</dt>
-              <dd className="text-body">{d}</dd>
+              <dt className="rounded-md border border-hairline bg-surface-2 px-2 py-0.5 font-mono text-ink">{k}</dt>
+              <dd className="text-body font-medium">{d}</dd>
             </div>
           ))}
         </dl>

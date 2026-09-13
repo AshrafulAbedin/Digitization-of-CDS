@@ -1,152 +1,162 @@
-import { useMemo, useRef, useState } from 'react';
+import type { RefObject } from 'react';
 import type { Product } from '../../types';
-import { fmtTaka } from '../../types';
 import { SearchInput } from '../../components/ui/SearchInput';
-import { Segmented } from '../../components/ui/Segmented';
-import { Stepper } from '../../components/ui/Stepper';
-import { Button } from '../../components/ui/Button';
+import { EmptyState } from '../../components/ui/EmptyState';
 
-type Filter = 'all' | 'kitchen' | 'ready';
-
-export function productAvailable(p: Product): boolean {
-  if (p.type === 'PREPARED') return p.status === 'Available';
-  return (p.stock ?? 0) > 0;
-}
-
-function edgeColor(p: Product): string {
-  if (p.type === 'PREPARED') {
-    if (p.status === 'Available') return 'bg-kitchen';
-    if (p.status === 'Preparing') return 'bg-gold';
-    return 'bg-warn';
-  }
-  return (p.stock ?? 0) > 0 ? 'bg-kitchen' : 'bg-warn';
-}
-
-function availabilityLabel(p: Product) {
-  if (p.type === 'PREPARED') {
-    if (p.status === 'Available') return <span className="text-sm text-kitchen">Batch #{p.batch_id}</span>;
-    if (p.status === 'Preparing') return <span className="text-sm text-[#8a6a3a]">Cooking…</span>;
-    return <span className="text-sm text-warn">Sold out</span>;
-  }
-  const stock = p.stock ?? 0;
-  if (stock <= 0) return <span className="text-sm text-warn">Out of stock</span>;
-  const low = p.reorder_level != null && stock <= p.reorder_level;
-  return (
-    <span className="tabular text-sm text-label">
-      {stock} left{' '}
-      {low && <span className="rounded-full bg-[#f4e9d8] px-1.5 text-[#8a6a3a]">Low</span>}
-    </span>
-  );
+export function productAvailable(p: Product) {
+  return p.status === 'Available' || (p.status.startsWith('Live Stock:') && p.stock !== null && p.stock > 0);
 }
 
 interface CatalogProps {
   products: Product[];
   onAdd: (p: Product) => void;
   onStockout: (p: Product, qty: number) => void;
-  searchRef: React.RefObject<HTMLInputElement | null>;
+  searchRef: RefObject<HTMLInputElement | null>;
 }
 
 export function Catalog({ products, onAdd, onStockout, searchRef }: CatalogProps) {
-  const [query, setQuery] = useState('');
-  const [filter, setFilter] = useState<Filter>('all');
-  const [stockoutFor, setStockoutFor] = useState<Product | null>(null);
-  const [stockoutQty, setStockoutQty] = useState(1);
-  const pressedRef = useRef<number | null>(null);
-  const [pressed, setPressed] = useState<number | null>(null);
-
-  const filtered = useMemo(
-    () =>
-      products.filter((p) => {
-        if (filter === 'kitchen' && p.type !== 'PREPARED') return false;
-        if (filter === 'ready' && p.type !== 'READY_MADE') return false;
-        return p.name.toLowerCase().includes(query.toLowerCase());
-      }),
-    [products, query, filter],
-  );
-
-  const handleClick = (p: Product) => {
-    setPressed(p.id);
-    clearTimeout(pressedRef.current ?? undefined);
-    pressedRef.current = window.setTimeout(() => setPressed(null), 100);
-    if (productAvailable(p)) {
-      onAdd(p);
-    } else {
-      setStockoutFor(p);
-      setStockoutQty(1);
-    }
-  };
-
   return (
-    <section className="flex min-w-0 flex-1 flex-col">
-      <div className="sticky top-0 z-10 flex items-center gap-3 border-b border-[#e7e2da] bg-paper px-4 py-3">
-        <SearchInput
-          ref={searchRef}
-          placeholder="Search items…  ( / )"
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          className="max-w-xs flex-1"
-        />
-        <Segmented<Filter>
-          options={[
-            { value: 'all', label: 'All' },
-            { value: 'kitchen', label: 'Kitchen' },
-            { value: 'ready', label: 'Ready-Made' },
-          ]}
-          value={filter}
-          onChange={setFilter}
-        />
+    <div className="flex-1 overflow-y-auto p-6">
+      <div className="mb-6 flex items-center gap-3">
+        <SearchInput ref={searchRef} placeholder="Search food… (Press / to focus)" className="flex-1 max-w-md" />
       </div>
 
-      <div className="grid flex-1 auto-rows-min grid-cols-3 gap-3 overflow-y-auto p-4 xl:grid-cols-4 2xl:grid-cols-5">
-        {filtered.map((p) => {
-          const available = productAvailable(p);
-          return (
-            <div key={p.id} className="relative">
+      {products.length === 0 ? (
+        <EmptyState title="No items found" hint="Try a different search term." />
+      ) : (
+        <div className="grid grid-cols-2 gap-4 lg:grid-cols-3 xl:grid-cols-4">
+          {products.map((p) => {
+            const available = productAvailable(p);
+            const low = p.stock !== null && p.stock <= 5 && available;
+
+            return (
               <button
-                onClick={() => handleClick(p)}
-                className={`relative flex h-[110px] w-full flex-col justify-between overflow-hidden rounded-xl border border-[#e7e2da] bg-white p-3 pl-4 text-left transition-transform duration-100 hover:border-[#c9c2b6] ${
-                  pressed === p.id ? 'scale-[0.97]' : ''
-                } ${available ? '' : 'opacity-50'}`}
+                key={p.id}
+                onClick={() => available && onAdd(p)}
+                disabled={!available}
+                className={`group relative flex min-h-[140px] flex-col items-start justify-between overflow-hidden rounded-2xl border-2 p-5 text-left transition-all ${
+                  available
+                    ? 'border-hairline bg-white hover:-translate-y-1 hover:border-emerald-500 hover:shadow-lg hover:shadow-emerald-500/20'
+                    : 'cursor-not-allowed border-hairline bg-white/60 opacity-60'
+                }`}
               >
-                <span className={`absolute inset-y-0 left-0 w-1 ${edgeColor(p)}`} aria-hidden />
-                <span className="line-clamp-2 font-medium text-body">{p.name}</span>
-                <span className="flex items-end justify-between">
-                  <span className="tabular font-bold text-ink">{fmtTaka(p.price)}</span>
-                  {availabilityLabel(p)}
-                </span>
-              </button>
-
-              {stockoutFor?.id === p.id && (
-                <div className="absolute top-full left-0 z-20 mt-1 w-56 rounded-xl border border-[#e7e2da] bg-white p-3 shadow-lg">
-                  <div className="text-sm font-medium text-ink">Log missed demand</div>
-                  <div className="mt-1 text-sm text-label">Customer wanted {p.name}</div>
-                  <div className="mt-2 flex items-center justify-between">
-                    <Stepper value={stockoutQty} min={1} max={20} onChange={setStockoutQty} small />
-                    <div className="flex gap-1">
-                      <Button size="sm" variant="ghost" onClick={() => setStockoutFor(null)}>
-                        Cancel
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="primary"
-                        onClick={() => {
-                          onStockout(p, stockoutQty);
-                          setStockoutFor(null);
-                        }}
-                      >
-                        Log
-                      </Button>
-                    </div>
-                  </div>
+                <div className="flex w-full items-start justify-between gap-2">
+                  <h3 className="font-display text-2xl font-extrabold leading-tight text-ink">
+                    {p.name}
+                  </h3>
+                  {!available && (
+                    <span className="shrink-0 rounded-full bg-rose-100 px-3 py-1 text-xs font-extrabold uppercase tracking-wider text-rose-700">
+                      Out
+                    </span>
+                  )}
+                  {low && (
+                    <span className="shrink-0 rounded-full bg-amber-100 px-3 py-1 text-xs font-extrabold uppercase tracking-wider text-amber-800">
+                      Low
+                    </span>
+                  )}
                 </div>
-              )}
-            </div>
-          );
-        })}
-        {filtered.length === 0 && (
-          <div className="col-span-full py-10 text-center text-label">No items match “{query}”</div>
-        )}
-      </div>
-    </section>
+
+                <p className="mt-4 font-mono text-3xl font-extrabold text-orange-600">
+                  <span className="text-lg text-label">৳</span>
+                  {p.price}
+                </p>
+
+                {!available && (
+                  <div
+                    className="absolute inset-0 z-10 flex items-center justify-center bg-white/85 backdrop-blur-sm"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      if (confirm(`Log missed demand for ${p.name}?`)) onStockout(p, 1);
+                    }}
+                  >
+                    <span className="rounded-full bg-orange-500 px-4 py-2 text-sm font-extrabold text-white shadow-lg">
+                      Log missed demand
+                    </span>
+                  </div>
+                )}
+              </button>
+            );
+          })}
+        </div>
+      )}
+    </div>
   );
 }
+// function getFoodEmoji(name: string, type: string) {
+//   const lower = name.toLowerCase();
+//   if (lower.includes('rice')) return '';
+//   if (lower.includes('chicken')) return '';
+//   if (lower.includes('coke') || lower.includes('water') || lower.includes('drink')) return '';
+//   if (lower.includes('chips') || lower.includes('fries')) return '';
+//   if (lower.includes('samosa') || lower.includes('shingara')) return '';
+//   if (lower.includes('puri')) return '';
+//   if (lower.includes('egg')) return '';
+//   return type === 'PREPARED' ? '🍽️' : '📦';
+// }
+
+// interface CatalogProps {
+//   products: Product[];
+//   onAdd: (p: Product) => void;
+//   onStockout: (p: Product, qty: number) => void;
+//   searchRef: RefObject<HTMLInputElement | null>;
+// }
+
+// export function Catalog({ products, onAdd, onStockout, searchRef }: CatalogProps) {
+//   return (
+//     <div className="flex-1 overflow-y-auto p-6">
+//       <div className="mb-6 flex items-center gap-3">
+//         <SearchInput ref={searchRef} placeholder="Search food… (Press / to focus)" className="flex-1 max-w-md" />
+//       </div>
+
+//       {products.length === 0 ? (
+//         <EmptyState title="No items found" hint="Try a different search term." />
+//       ) : (
+//         <div className="grid grid-cols-2 gap-4 lg:grid-cols-3 xl:grid-cols-4">
+//           {products.map((p) => {
+//             const available = productAvailable(p);
+//             const low = p.stock !== null && p.stock <= 5 && available;
+
+//             return (
+//               <button
+//                 key={p.id}
+//                 onClick={() => available && onAdd(p)}
+//                 disabled={!available}
+//                 className={`group relative flex min-h-[140px] flex-col items-start justify-between overflow-hidden rounded-2xl border-2 p-5 text-left transition-all ${
+//                   available
+//                     ? 'border-hairline bg-white hover:-translate-y-1 hover:border-emerald-500 hover:shadow-lg hover:shadow-emerald-500/20'
+//                     : 'cursor-not-allowed border-hairline bg-white/60 opacity-60'
+//                 }`}
+//               >
+//                 <div className="mb-3 flex w-full items-start justify-between">
+//                   <span className="text-4xl">{getFoodEmoji(p.name, p.type)}</span>
+//                   {!available && (
+//                     <span className="rounded-full bg-rose-100 px-2.5 py-0.5 text-[11px] font-extrabold uppercase tracking-wider text-rose-700">Out</span>
+//                   )}
+//                   {low && (
+//                     <span className="rounded-full bg-amber-100 px-2.5 py-0.5 text-[11px] font-extrabold uppercase tracking-wider text-amber-800">Low</span>
+//                   )}
+//                 </div>
+//                 <h3 className="font-display font-extrabold text-ink leading-tight mb-2 text-lg">{p.name}</h3>
+//                 <p className="mt-auto font-mono font-extrabold text-orange-600 text-2xl">
+//                   <span className="text-base text-label">৳</span>{p.price}
+//                 </p>
+
+//                 {!available && (
+//                   <div
+//                     className="absolute inset-0 z-10 flex items-center justify-center bg-white/85 backdrop-blur-sm"
+//                     onClick={(e) => {
+//                       e.stopPropagation();
+//                       if (confirm(`Log missed demand for ${p.name}?`)) onStockout(p, 1);
+//                     }}
+//                   >
+//                     <span className="rounded-full bg-orange-500 px-3 py-1.5 text-sm font-bold text-white shadow-lg">Log missed demand</span>
+//                   </div>
+//                 )}
+//               </button>
+//             );
+//           })}
+//         </div>
+//       )}
+//     </div>
+//   );
+// }

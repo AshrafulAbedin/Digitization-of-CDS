@@ -1,7 +1,5 @@
 import type { ParkedTicket } from './posTypes';
-import { fmtTaka } from '../../types';
-import { Button } from '../../components/ui/Button';
-import { EmptyState } from '../../components/ui/EmptyState';
+import { Clock } from '../../components/Clock';
 
 interface ParkedDrawerProps {
   open: boolean;
@@ -10,55 +8,128 @@ interface ParkedDrawerProps {
   onResume: (t: ParkedTicket) => void;
 }
 
-function chip(t: ParkedTicket) {
-  if (t.lines.some((l) => l.flash === 'reject'))
-    return <span className="rounded-full bg-warn/15 px-2 py-0.5 text-xs font-medium text-warn">Rejected</span>;
-  if (t.lines.some((l) => l.pendingRequestId != null))
-    return <span className="rounded-full bg-[#f4e9d8] px-2 py-0.5 text-xs font-medium text-[#8a6a3a]">Waiting on kitchen</span>;
-  return <span className="rounded-full bg-kitchen/10 px-2 py-0.5 text-xs font-medium text-kitchen">Ready to resume</span>;
-}
-
 export function ParkedDrawer({ open, onClose, parked, onResume }: ParkedDrawerProps) {
   if (!open) return null;
+
   return (
-    <div className="fixed inset-0 z-40" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
-      <div className="absolute inset-0 bg-black/25" />
-      <aside className="absolute top-0 right-0 flex h-full w-[380px] flex-col bg-white shadow-xl">
-        <header className="flex items-center justify-between border-b border-[#e7e2da] px-4 py-3">
-          <h2 className="text-lg font-semibold text-ink">Parked orders</h2>
-          <Button size="sm" variant="ghost" onClick={onClose}>
+    <>
+      {/* Backdrop */}
+      <div
+        className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm"
+        onClick={onClose}
+      />
+
+      {/* Drawer */}
+      <aside className="fixed right-0 top-0 z-50 flex h-full w-[420px] flex-col border-l border-white/10 bg-[#0b1220]/95 backdrop-blur-2xl shadow-2xl">
+        <header className="flex items-center justify-between border-b border-white/10 px-6 py-5">
+          <div>
+            <h2 className="font-display text-2xl font-extrabold text-white">Parked Tickets</h2>
+            <p className="mt-0.5 text-xs font-semibold uppercase tracking-widest text-slate-500">
+              {parked.length} waiting
+            </p>
+          </div>
+          <button
+            onClick={onClose}
+            className="rounded-xl border border-white/10 bg-white/5 px-3 py-1.5 text-sm font-bold text-slate-300 hover:bg-white/10 hover:text-white transition-colors"
+          >
             ✕
-          </Button>
+          </button>
         </header>
-        <div className="flex-1 space-y-3 overflow-y-auto p-4">
-          {parked.length === 0 && (
-            <EmptyState title="Nothing parked" hint="Park a ticket while it waits on a kitchen approval." />
+
+        <div className="flex-1 overflow-y-auto p-5">
+          {parked.length === 0 ? (
+            <div className="flex h-full flex-col items-center justify-center text-center">
+              <div className="mb-3 text-5xl opacity-20">🅿️</div>
+              <p className="text-sm font-semibold text-slate-400">No parked tickets</p>
+              <p className="mt-1 text-xs text-slate-500">
+                Park an order with F4 while you finish something else.
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {parked.map((t) => {
+                const total = t.lines.reduce((s, l) => s + l.product.price * l.qty, 0);
+                const itemCount = t.lines.reduce((s, l) => s + l.qty, 0);
+                const minutesAgo = Math.floor((Date.now() - t.parkedAt) / 60000);
+                const urgent = minutesAgo >= 5;
+
+                return (
+                  <div
+                    key={t.id}
+                    className={`rounded-2xl border p-4 backdrop-blur transition-all ${
+                      urgent
+                        ? 'border-amber-500/40 bg-amber-500/[0.06]'
+                        : 'border-white/10 bg-white/[0.04]'
+                    }`}
+                  >
+                    <div className="flex items-start justify-between">
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <span className="font-display font-bold text-white">
+                            #{t.id}
+                          </span>
+                          <span className="rounded-full bg-white/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                            {t.dineTakeaway === 'dine_in' ? 'Dine in' : 'Takeaway'}
+                          </span>
+                        </div>
+                        <p className="mt-1 text-xs text-slate-500">
+                          {t.customer?.name ?? 'Guest'} · {itemCount} item{itemCount !== 1 ? 's' : ''}
+                        </p>
+                      </div>
+                      <div className="text-right">
+                        <p className="font-mono text-lg font-extrabold text-orange-400">
+                          ৳{total}
+                        </p>
+                        <p
+                          className={`text-[10px] font-bold uppercase tracking-wider ${
+                            urgent ? 'text-amber-400' : 'text-slate-500'
+                          }`}
+                        >
+                          {minutesAgo}m ago
+                        </p>
+                      </div>
+                    </div>
+
+                    <ul className="mt-3 space-y-1">
+                      {t.lines.slice(0, 3).map((l) => (
+                        <li
+                          key={l.product.id}
+                          className="flex justify-between text-xs text-slate-400"
+                        >
+                          <span>
+                            <span className="font-mono text-white">{l.qty}×</span>{' '}
+                            {l.product.name}
+                          </span>
+                          <span className="font-mono">৳{l.product.price * l.qty}</span>
+                        </li>
+                      ))}
+                      {t.lines.length > 3 && (
+                        <li className="text-xs italic text-slate-500">
+                          +{t.lines.length - 3} more item{t.lines.length - 3 > 1 ? 's' : ''}
+                        </li>
+                      )}
+                    </ul>
+
+                    <button
+                      onClick={() => onResume(t)}
+                      className="mt-4 w-full rounded-xl bg-gradient-to-r from-orange-500 to-pink-500 py-2.5 text-xs font-extrabold uppercase tracking-wider text-white shadow-md shadow-orange-500/30 hover:shadow-lg transition-all"
+                    >
+                      Resume Ticket
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
           )}
-          {parked.map((t) => {
-            const total = t.lines.reduce((s, l) => s + l.qty * l.product.price, 0);
-            const ageMin = Math.floor((Date.now() - t.parkedAt) / 60000);
-            return (
-              <div key={t.id} className="rounded-xl border border-[#e7e2da] p-3">
-                <div className="flex items-center justify-between">
-                  <span className="font-medium text-ink">{t.customer?.name ?? 'Guest'}</span>
-                  {chip(t)}
-                </div>
-                <div className="mt-1 truncate text-sm text-label">
-                  {t.lines.map((l) => `${l.qty}× ${l.product.name}`).join(', ')}
-                </div>
-                <div className="mt-2 flex items-center justify-between">
-                  <span className="tabular text-sm text-label">
-                    {fmtTaka(total)} · {ageMin < 1 ? 'just now' : `${ageMin} min ago`}
-                  </span>
-                  <Button size="sm" variant="secondary" onClick={() => onResume(t)}>
-                    Resume
-                  </Button>
-                </div>
-              </div>
-            );
-          })}
         </div>
+
+        <footer className="border-t border-white/10 px-6 py-4">
+          <div className="flex items-center justify-between text-xs text-slate-500">
+            <span>Press Esc to close</span>
+            <Clock />
+          </div>
+        </footer>
       </aside>
-    </div>
+    </>
   );
 }

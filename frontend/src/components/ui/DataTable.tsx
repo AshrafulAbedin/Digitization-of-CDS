@@ -30,21 +30,22 @@ export function DataTable<T>({ columns, rows, rowKey, emptyMessage = 'No data' }
   }, [rows, sort, columns]);
 
   return (
-    <div className="overflow-x-auto rounded-xl border border-[#e7e2da] bg-white">
-      <table className="w-full text-sm leading-[1.8]">
+    <div className="overflow-x-auto">
+      <table className="w-full text-lg">
         <thead>
-          <tr className="border-b border-[#e7e2da] text-left text-label">
+          <tr className="border-b-2 border-hairline bg-emerald-100/70 text-left">
             {columns.map((c) => (
               <th
                 key={c.key}
-                className={`px-4 py-2.5 font-medium select-none ${c.align === 'right' ? 'text-right' : ''} ${c.sortValue ? 'cursor-pointer hover:text-body' : ''}`}
+                className={`px-6 py-5 text-sm font-extrabold uppercase tracking-widest text-ink select-none ${
+                  c.align === 'right' ? 'text-right' : ''
+                } ${c.sortValue ? 'cursor-pointer hover:text-emerald-700 transition-colors' : ''}`}
                 onClick={() =>
-                  c.sortValue &&
-                  setSort((s) => ({ key: c.key, dir: s?.key === c.key && s.dir === 1 ? -1 : 1 }))
+                  c.sortValue && setSort((s) => ({ key: c.key, dir: s?.key === c.key && s.dir === 1 ? -1 : 1 }))
                 }
               >
                 {c.header}
-                {sort?.key === c.key && (sort.dir === 1 ? ' ↑' : ' ↓')}
+                {sort?.key === c.key && <span className="ml-1.5 text-emerald-700">{sort.dir === 1 ? '↑' : '↓'}</span>}
               </th>
             ))}
           </tr>
@@ -52,17 +53,20 @@ export function DataTable<T>({ columns, rows, rowKey, emptyMessage = 'No data' }
         <tbody>
           {sorted.length === 0 ? (
             <tr>
-              <td colSpan={columns.length} className="px-4 py-8 text-center text-label">
-                {emptyMessage}
+              <td colSpan={columns.length} className="px-6 py-16 text-center">
+                <div className="text-4xl opacity-40 mb-2">📭</div>
+                <div className="text-lg font-bold text-body">{emptyMessage}</div>
               </td>
             </tr>
           ) : (
             sorted.map((row) => (
-              <tr key={rowKey(row)} className="border-b border-[#f1ede7] last:border-0 hover:bg-paper/60">
+              <tr key={rowKey(row)} className="border-b border-hairline last:border-0 hover:bg-emerald-100/40 transition-colors">
                 {columns.map((c) => (
                   <td
                     key={c.key}
-                    className={`px-4 py-2 ${c.align === 'right' ? 'tabular text-right' : ''}`}
+                    className={`px-6 py-5 text-lg text-ink font-medium ${
+                      c.align === 'right' ? 'text-right font-mono tabular-nums' : ''
+                    }`}
                   >
                     {c.render(row)}
                   </td>

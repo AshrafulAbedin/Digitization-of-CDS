@@ -1,7 +1,5 @@
-import { Modal } from '../../components/ui/Modal';
-import { Button } from '../../components/ui/Button';
-import { fmtTaka } from '../../types';
 import type { TicketLine } from './posTypes';
+import { Modal } from '../../components/ui/Modal';
 
 interface PayModalProps {
   token: number | null;
@@ -11,38 +9,57 @@ interface PayModalProps {
 }
 
 export function PayModal({ token, lines, payment, onClose }: PayModalProps) {
-  const hasKitchen = lines.some((l) => l.product.type === 'PREPARED');
-  const total = lines.reduce((s, l) => s + l.qty * l.product.price, 0);
+  const total = lines.reduce((sum, l) => sum + l.product.price * l.qty, 0);
+  const itemCount = lines.reduce((sum, l) => sum + l.qty, 0);
+
   return (
     <Modal open={token !== null} onClose={onClose}>
       <div className="text-center">
-        <div className="text-sm text-label">Token</div>
-        <div className="tabular font-mono text-6xl font-bold text-ink">#{token}</div>
-        <div className="mt-2 text-sm font-medium text-kitchen">
-          {hasKitchen ? 'Sent to kitchen — watch the token screen' : 'Hand over items now'}
-        </div>
-      </div>
-      <div className="mt-4 rounded-xl border border-[#e7e2da] p-3 text-sm">
-        {lines.map((l) => (
-          <div key={l.product.id} className="flex justify-between py-0.5">
-            <span className="text-body">
-              {l.qty}× {l.product.name}
+        <p className="text-xs font-bold uppercase tracking-[0.25em] text-slate-500">
+          {payment === 'cash' ? 'Paid in Cash' : 'Paid by Mobile'}
+        </p>
+        <p className="mt-3 font-display text-sm font-bold uppercase tracking-widest text-orange-400">
+          Token
+        </p>
+        <p className="mt-1 font-mono text-7xl font-extrabold text-white leading-none">
+          {token}
+        </p>
+
+        <div className="mt-6 rounded-2xl border border-white/10 bg-white/[0.03] p-4 text-left">
+          <ul className="space-y-2">
+            {lines.map((l) => (
+              <li
+                key={l.product.id}
+                className="flex items-center justify-between border-b border-white/5 pb-2 last:border-0 last:pb-0"
+              >
+                <span className="text-sm text-slate-300">
+                  <span className="font-mono font-bold text-white">{l.qty}×</span>{' '}
+                  {l.product.name}
+                </span>
+                <span className="font-mono text-sm font-bold text-orange-400">
+                  ৳{l.product.price * l.qty}
+                </span>
+              </li>
+            ))}
+          </ul>
+
+          <div className="mt-4 flex items-center justify-between border-t border-dashed border-white/10 pt-3">
+            <span className="text-sm font-bold uppercase tracking-wider text-slate-500">
+              {itemCount} item{itemCount !== 1 ? 's' : ''}
             </span>
-            <span className="tabular text-body">{fmtTaka(l.qty * l.product.price)}</span>
+            <span className="font-mono text-2xl font-extrabold text-white">
+              <span className="text-orange-400 text-lg">৳</span>
+              {total}
+            </span>
           </div>
-        ))}
-        <div className="mt-2 flex justify-between border-t border-[#e7e2da] pt-2 font-semibold text-ink">
-          <span>Total · {payment === 'cash' ? 'Cash' : 'Mobile banking'}</span>
-          <span className="tabular">{fmtTaka(total)}</span>
         </div>
-      </div>
-      <div className="mt-4 flex gap-2">
-        <Button variant="primary" className="flex-1" onClick={() => window.print()}>
-          Print token
-        </Button>
-        <Button variant="secondary" className="flex-1" onClick={onClose}>
-          Done
-        </Button>
+
+        <button
+          onClick={onClose}
+          className="mt-6 w-full rounded-2xl bg-gradient-to-r from-orange-500 to-pink-500 py-3.5 text-sm font-extrabold uppercase tracking-wider text-white shadow-lg shadow-orange-500/30 hover:shadow-xl transition-all"
+        >
+          Done — Next Order
+        </button>
       </div>
     </Modal>
   );

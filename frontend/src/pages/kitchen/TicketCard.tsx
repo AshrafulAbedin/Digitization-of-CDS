@@ -1,40 +1,4 @@
-import { useEffect, useState } from 'react';
 import type { BoardOrder, OrderStatus } from '../../types';
-
-const headerTone: Record<string, string> = {
-  paid: 'bg-[#e8eef7] text-[#3d5a8a]',
-  preparing: 'bg-[#f4e9d8] text-[#8a6a3a]',
-  ready: 'bg-kitchen/15 text-kitchen',
-};
-
-const bumpLabel: Record<string, string> = {
-  paid: 'Start',
-  preparing: 'Ready',
-  ready: 'Served',
-};
-
-const nextStatus: Record<string, OrderStatus> = {
-  paid: 'preparing',
-  preparing: 'ready',
-  ready: 'served',
-};
-
-const prevStatus: Record<string, OrderStatus> = {
-  preparing: 'paid',
-  ready: 'preparing',
-};
-
-function useElapsed(sinceIso: string) {
-  const [, tick] = useState(0);
-  useEffect(() => {
-    const id = setInterval(() => tick((n) => n + 1), 1000);
-    return () => clearInterval(id);
-  }, []);
-  const secs = Math.max(0, Math.floor((Date.now() - new Date(sinceIso).getTime()) / 1000));
-  const mm = String(Math.floor(secs / 60)).padStart(2, '0');
-  const ss = String(secs % 60).padStart(2, '0');
-  return { text: `${mm}:${ss}`, mins: secs / 60 };
-}
 
 interface TicketCardProps {
   order: BoardOrder;
@@ -42,70 +6,69 @@ interface TicketCardProps {
 }
 
 export function TicketCard({ order, onAdvance }: TicketCardProps) {
-  const { text, mins } = useElapsed(order.order_timestamp);
-  const [menuOpen, setMenuOpen] = useState(false);
-  const timerClass = mins >= 10 ? 'text-warn font-bold' : mins >= 5 ? 'text-[#8a6a3a] font-bold' : 'text-body';
+  const themes: Record<string, { border: string; bg: string; headerBg: string; btn: string; label: string; nextStatus: OrderStatus; nextLabel: string }> = {
+    paid: {
+      border: 'border-emerald-400',
+      bg: 'bg-emerald-50',
+      headerBg: 'bg-gradient-to-r from-emerald-500 to-teal-600',
+      btn: 'from-emerald-500 to-teal-600',
+      label: 'NEW', nextStatus: 'preparing', nextLabel: 'Start Cooking',
+    },
+    preparing: {
+      border: 'border-orange-400',
+      bg: 'bg-orange-50',
+      headerBg: 'bg-gradient-to-r from-orange-500 to-amber-600',
+      btn: 'from-orange-500 to-amber-600',
+      label: 'COOKING', nextStatus: 'ready', nextLabel: 'Mark Ready',
+    },
+    ready: {
+      border: 'border-emerald-500',
+      bg: 'bg-emerald-50',
+      headerBg: 'bg-gradient-to-r from-emerald-600 to-green-700',
+      btn: 'from-emerald-600 to-green-700',
+      label: 'READY', nextStatus: 'served', nextLabel: 'Mark Served',
+    },
+  };
+
+  const t = themes[order.status] ?? themes.paid;
+  const minutesAgo = Math.floor((Date.now() - new Date(order.order_timestamp).getTime()) / 60000);
 
   return (
-    <div className="animate-ticket-in flex w-[260px] flex-col overflow-hidden rounded-xl border border-[#e7e2da] bg-white shadow-sm">
-      <div className={`flex items-center justify-between px-3 py-2 ${headerTone[order.status]}`}>
-        <span className="tabular font-mono text-5xl leading-none font-bold text-ink">
-          #{order.order_id}
-        </span>
-        <span className={`tabular font-mono text-lg ${timerClass}`}>{text}</span>
-      </div>
-      <div className="flex items-center gap-1.5 border-b border-[#f1ede7] px-3 py-1.5 text-sm text-label">
-        <span aria-hidden>{order.dine_in_takeaway === 'dine_in' ? '🍽' : '🥡'}</span>
-        {order.dine_in_takeaway === 'dine_in' ? 'Dine-in' : 'Takeaway'} · {order.customer_name}
-      </div>
-      <ul className="flex-1 bg-paper px-3 py-2">
-        {(order.items ?? []).map((it, i) => (
-          <li key={i} className="flex items-center gap-2 py-1 text-lg text-body">
-            <span className="tabular flex h-7 min-w-7 items-center justify-center rounded-md border border-[#d9d4cc] bg-white px-1 font-mono font-semibold">
-              {it.qty}
-            </span>
-            {it.name}
-          </li>
-        ))}
-      </ul>
-      <div className="relative flex">
-        <button
-          className="h-[52px] flex-1 bg-ink text-lg font-bold text-white hover:bg-black"
-          onClick={() => onAdvance(order.order_id, nextStatus[order.status])}
-        >
-          {bumpLabel[order.status]}
-        </button>
-        <button
-          className="h-[52px] w-12 border-l border-white/20 bg-ink text-white hover:bg-black"
-          onClick={() => setMenuOpen((v) => !v)}
-          aria-label="More actions"
-        >
-          ⋯
-        </button>
-        {menuOpen && (
-          <div className="absolute right-0 bottom-full z-20 mb-1 w-40 rounded-xl border border-[#e7e2da] bg-white py-1 shadow-lg">
-            {prevStatus[order.status] && (
-              <button
-                className="block w-full px-3 py-2 text-left text-sm text-body hover:bg-paper"
-                onClick={() => {
-                  onAdvance(order.order_id, prevStatus[order.status]);
-                  setMenuOpen(false);
-                }}
-              >
-                Recall
-              </button>
-            )}
-            <button
-              className="block w-full px-3 py-2 text-left text-sm text-warn hover:bg-paper"
-              onClick={() => {
-                onAdvance(order.order_id, 'abandoned');
-                setMenuOpen(false);
-              }}
-            >
-              Cancel
-            </button>
+    <div className={`flex w-[320px] flex-col overflow-hidden rounded-3xl border-2 ${t.border} ${t.bg} shadow-lg transition-all hover:shadow-xl hover:-translate-y-1`}>
+      <div className={`flex items-center justify-between px-5 py-4 ${t.headerBg} text-white`}>
+        <div className="flex items-center gap-2.5">
+          <span className="font-mono text-3xl font-extrabold">#{order.order_id}</span>
+          <span className="rounded-full bg-white/30 px-3 py-1 text-xs font-extrabold uppercase tracking-widest">{t.label}</span>
+        </div>
+        <div className="text-right">
+          <div className="text-xs font-extrabold uppercase tracking-wider opacity-95">
+            {order.dine_in_takeaway === 'dine_in' ? '🍽️ Dine In' : '🥡 Takeaway'}
           </div>
-        )}
+          <div className="font-mono text-base font-extrabold mt-0.5">{minutesAgo}m</div>
+        </div>
+      </div>
+
+      <div className="border-b-2 border-hairline bg-white/90 px-5 py-3">
+        <span className="text-base font-extrabold text-ink">👤 {order.customer_name}</span>
+      </div>
+
+      <div className="flex-1 space-y-3 p-5">
+        {order.items?.map((item, idx) => (
+          <div key={idx} className="flex items-center justify-between gap-3">
+            <span className="font-display text-lg font-extrabold text-ink leading-tight">{item.name}</span>
+            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-100 border-2 border-emerald-200 font-mono text-lg font-extrabold text-emerald-900">{item.qty}</span>
+          </div>
+        ))}
+        {(!order.items || order.items.length === 0) && <p className="text-base font-bold text-body italic">No kitchen items</p>}
+      </div>
+
+      <div className="p-4 pt-0">
+        <button
+          onClick={() => onAdvance(order.order_id, t.nextStatus)}
+          className={`w-full rounded-2xl bg-gradient-to-r ${t.btn} py-3.5 text-base font-extrabold text-white shadow-md transition-all active:scale-[0.97] hover:shadow-lg`}
+        >
+          {t.nextLabel} →
+        </button>
       </div>
     </div>
   );

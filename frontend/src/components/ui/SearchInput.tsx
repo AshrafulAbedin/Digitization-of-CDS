@@ -7,12 +7,12 @@ interface SearchInputProps extends InputHTMLAttributes<HTMLInputElement> {
 export function SearchInput({ className = '', ...rest }: SearchInputProps) {
   return (
     <div className={`relative ${className}`}>
-      <span className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-label">
+      <span className="pointer-events-none absolute top-1/2 left-4 -translate-y-1/2 text-slate-500">
         ⌕
       </span>
       <input
         type="search"
-        className="h-10 w-full rounded-lg border border-[#d9d4cc] bg-white pr-3 pl-9 text-base outline-none placeholder:text-label focus:border-gold focus:ring-2 focus:ring-gold/30"
+        className="h-12 w-full rounded-xl border border-white/10 bg-white/5 pr-4 pl-10 text-base text-white placeholder-slate-500 outline-none focus:border-orange-400 focus:ring-2 focus:ring-orange-400/20 backdrop-blur transition-all"
         {...rest}
       />
     </div>

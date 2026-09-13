@@ -23,11 +23,15 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
   return (
     <ToastContext.Provider value={push}>
       {children}
-      <div className="pointer-events-none fixed bottom-4 left-1/2 z-[60] flex -translate-x-1/2 flex-col items-center gap-2">
+      <div className="pointer-events-none fixed bottom-6 left-1/2 z-[60] flex -translate-x-1/2 flex-col items-center gap-2">
         {toasts.map((t) => (
           <div
             key={t.id}
-            className={`animate-ticket-in rounded-lg px-4 py-2 text-sm font-medium text-white shadow-lg ${t.tone === 'error' ? 'bg-warn' : 'bg-ink'}`}
+            className={`animate-ticket-in rounded-2xl px-5 py-3 text-sm font-bold text-white shadow-2xl backdrop-blur-xl ${
+              t.tone === 'error'
+                ? 'bg-gradient-to-r from-rose-500 to-pink-500 shadow-rose-500/30'
+                : 'bg-gradient-to-r from-emerald-500 to-teal-500 shadow-emerald-500/30'
+            }`}
           >
             {t.text}
           </div>

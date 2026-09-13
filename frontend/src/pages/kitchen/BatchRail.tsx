@@ -1,12 +1,5 @@
 import { useState } from 'react';
 import type { Batch, Product } from '../../types';
-import { Button } from '../../components/ui/Button';
-
-const dot: Record<Batch['status'], string> = {
-  preparing: 'bg-gold',
-  available: 'bg-kitchen',
-  exhausted: 'bg-warn',
-};
 
 interface BatchRailProps {
   batches: Batch[];
@@ -16,71 +9,55 @@ interface BatchRailProps {
 }
 
 export function BatchRail({ batches, kitchenItems, onStatus, onNewBatch }: BatchRailProps) {
-  const [formOpen, setFormOpen] = useState(false);
-  const [itemId, setItemId] = useState<number | ''>('');
+  const [selectedItem, setSelectedItem] = useState('');
 
   return (
-    <section>
-      <h2 className="mb-2 text-lg font-semibold text-ink">Batches</h2>
+    <div className="space-y-4">
+      <h3 className="font-display text-lg font-bold text-ink flex items-center gap-2">
+        <span className="bg-gradient-to-br from-emerald-400 to-teal-500 text-white p-1.5 rounded-lg text-xs">🍳</span>
+        Active Batches
+      </h3>
+
+      <div className="rounded-2xl border border-hairline bg-white p-4">
+        <p className="mb-2 text-xs font-bold uppercase tracking-wider text-body">Start New Batch</p>
+        <div className="flex gap-2">
+          <select
+            value={selectedItem}
+            onChange={(e) => setSelectedItem(e.target.value)}
+            className="flex-1 rounded-xl border border-hairline bg-white px-3 py-2 text-sm text-ink font-medium outline-none focus:border-emerald-400"
+          >
+            <option value="">Select item...</option>
+            {kitchenItems.map((item) => (<option key={item.id} value={item.id}>{item.name}</option>))}
+          </select>
+          <button
+            onClick={() => { if (selectedItem) { onNewBatch(Number(selectedItem)); setSelectedItem(''); } }}
+            disabled={!selectedItem}
+            className="rounded-xl bg-gradient-to-r from-emerald-400 to-teal-500 px-4 py-2 text-sm font-bold text-white shadow-md disabled:opacity-40 transition-all"
+          >
+            Add
+          </button>
+        </div>
+      </div>
+
       <div className="space-y-2">
+        {batches.length === 0 && <p className="text-sm text-body italic px-2 font-medium">No active batches right now.</p>}
         {batches.map((b) => (
-          <div key={b.id} className="flex items-center gap-2 rounded-xl border border-[#e7e2da] bg-white px-3 py-2">
-            <span className={`h-2.5 w-2.5 shrink-0 rounded-full ${dot[b.status]}`} />
-            <span className="min-w-0 flex-1 truncate text-body">
-              <span className="font-mono text-sm">#{b.id}</span> {b.name}
-            </span>
-            {b.status === 'preparing' && (
-              <Button size="sm" variant="success" onClick={() => onStatus(b.id, 'available')}>
-                Put on sale
-              </Button>
-            )}
-            {b.status === 'available' && (
-              <Button size="sm" variant="danger" onClick={() => onStatus(b.id, 'exhausted')}>
-                Sold out
-              </Button>
+          <div key={b.id} className="flex items-center justify-between rounded-xl border border-hairline bg-white p-3">
+            <div className="flex items-center gap-3">
+              <span className={`h-3 w-3 rounded-full ${b.status === 'available' ? 'bg-emerald-500 shadow-[0_0_8px_rgba(34,197,94,0.5)]' : 'bg-orange-400 animate-pulse'}`} />
+              <div>
+                <p className="font-semibold text-sm text-ink leading-tight">{b.name}</p>
+                <p className="text-[10px] font-mono text-label uppercase font-medium">Batch #{b.id}</p>
+              </div>
+            </div>
+            {b.status === 'preparing' ? (
+              <button onClick={() => onStatus(b.id, 'available')} className="rounded-lg bg-emerald-100 px-3 py-1.5 text-xs font-bold text-emerald-800 hover:bg-emerald-200 transition-colors">Ready</button>
+            ) : (
+              <button onClick={() => onStatus(b.id, 'exhausted')} className="rounded-lg bg-amber-100 px-3 py-1.5 text-xs font-bold text-amber-800 hover:bg-amber-200 transition-colors">Exhaust</button>
             )}
           </div>
         ))}
-        {batches.length === 0 && <p className="text-sm text-label">No batches today yet.</p>}
-
-        {formOpen ? (
-          <div className="space-y-2 rounded-xl border border-[#e7e2da] bg-white p-3">
-            <select
-              value={itemId}
-              onChange={(e) => setItemId(Number(e.target.value))}
-              className="h-10 w-full rounded-lg border border-[#d9d4cc] bg-white px-2 text-base"
-            >
-              <option value="">Select kitchen item…</option>
-              {kitchenItems.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.name}
-                </option>
-              ))}
-            </select>
-            <div className="flex justify-end gap-2">
-              <Button size="sm" variant="ghost" onClick={() => setFormOpen(false)}>
-                Cancel
-              </Button>
-              <Button
-                size="sm"
-                variant="primary"
-                disabled={itemId === ''}
-                onClick={() => {
-                  onNewBatch(itemId as number);
-                  setFormOpen(false);
-                  setItemId('');
-                }}
-              >
-                Start cooking
-              </Button>
-            </div>
-          </div>
-        ) : (
-          <Button variant="secondary" className="w-full" onClick={() => setFormOpen(true)}>
-            + New batch
-          </Button>
-        )}
       </div>
-    </section>
+    </div>
   );
 }
