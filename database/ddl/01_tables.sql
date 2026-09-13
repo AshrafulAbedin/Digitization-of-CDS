@@ -165,7 +165,8 @@ CREATE TABLE kitchen_batch_issue_line (
     batch_id          INTEGER NOT NULL REFERENCES kitchen_batch_issue(batch_id) ON DELETE CASCADE,
     raw_material_id   INTEGER NOT NULL REFERENCES raw_material(raw_material_id),
     quantity_taken    DECIMAL NOT NULL,
-    unit_cost_at_time DECIMAL NOT NULL
+    unit_cost_at_time DECIMAL NOT NULL,
+    CONSTRAINT chk_batch_line_qty_positive CHECK (quantity_taken > 0)
 );
 
 -- 11. kitchen_request (escalation for exceeding mode limit)
@@ -231,7 +232,9 @@ CREATE TABLE purchase_order_line (
     item_id           INTEGER NOT NULL,
     quantity          DECIMAL NOT NULL,
     unit_cost         DECIMAL NOT NULL,
-    CONSTRAINT chk_item_type CHECK (item_type IN ('raw_material', 'ready_made'))
+    CONSTRAINT chk_item_type CHECK (item_type IN ('raw_material', 'ready_made')),
+    CONSTRAINT chk_po_line_qty_positive CHECK (quantity > 0),
+    CONSTRAINT chk_po_line_cost_positive CHECK (unit_cost >= 0)
 );
 
 -- 16. order_line
@@ -242,5 +245,6 @@ CREATE TABLE order_line (
     batch_id            INTEGER REFERENCES kitchen_batch_issue(batch_id),
     quantity            INTEGER NOT NULL DEFAULT 1,
     unit_price_snapshot DECIMAL NOT NULL,
-    unit_cost_at_time   DECIMAL
+    unit_cost_at_time   DECIMAL,
+    CONSTRAINT chk_order_line_qty_positive CHECK (quantity > 0)
 );

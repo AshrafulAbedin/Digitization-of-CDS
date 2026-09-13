@@ -129,7 +129,7 @@ BEGIN
         ) AS items
     FROM customer_order o
     JOIN customer c ON o.customer_id = c.customer_id
-    WHERE o.status IN ('paid', 'preparing')
+    WHERE o.status IN ('paid', 'preparing', 'ready')
       AND EXISTS (
           SELECT 1 FROM order_line ol2
           JOIN menu_item m2 ON ol2.menu_item_id = m2.menu_item_id
