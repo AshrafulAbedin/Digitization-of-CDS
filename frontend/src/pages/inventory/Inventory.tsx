@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { apiGet, apiPost } from '../../api/client';
-import type { PurchaseOrderRow, RawMaterial, ReadyMadeStockRow, StockoutRow, Vendor, WasteRow } from '../../types';
+import type { PurchaseOrderRow, RawMaterial, ReadyMadeStockRow, StockoutRow, Vendor, WasteRow, DailyStockRow } from '../../types';
 import { usePolling } from '../../hooks/usePolling';
 import { useToast } from '../../components/ui/Toast';
 import { Button } from '../../components/ui/Button';
@@ -22,6 +22,7 @@ const tabs: { id: Tab; label: string }[] = [
 export function Inventory() {
   const toast = useToast();
   const [tab, setTab] = useState<Tab>('raw');
+  const [purchasePrefill, setPurchasePrefill] = useState<{ item_type: 'raw_material' | 'ready_made'; item_id: number } | null>(null);
 
   const { data: materials, refresh: refreshMaterials } = usePolling<RawMaterial[]>(
     () => apiGet('/inventory/raw-materials'),
@@ -29,6 +30,10 @@ export function Inventory() {
   );
   const { data: readyMade, refresh: refreshReady } = usePolling<ReadyMadeStockRow[]>(
     () => apiGet('/inventory/ready-made-stock'),
+    8000,
+  );
+  const { data: dailyStock, refresh: refreshDaily } = usePolling<DailyStockRow[]>(
+    () => apiGet('/inventory/daily-stock'),
     8000,
   );
   const { data: vendors, refresh: refreshVendors } = usePolling<Vendor[]>(
@@ -52,32 +57,29 @@ export function Inventory() {
   const refreshStock = () => {
     refreshMaterials();
     refreshReady();
+    refreshDaily();
     refreshWaste();
     refreshOrders();
     refreshVendors();
   };
 
-  const initDay = async () => {
-    try {
-      const r = await apiPost<{ rows_created: number }>('/inventory/daily-stock/init');
-      toast(`Daily stock initialized (${r.rows_created} items)`);
-      refreshStock();
-    } catch (e) {
-      toast(e instanceof Error ? e.message : 'Init failed', 'error');
-    }
-  };
-
   const endOfDay = async () => {
+    if (!window.confirm("Recalculate today's waste?")) return;
     try {
       const rows = await apiPost<{ item_name: string; quantity_wasted: number }[]>(
         '/inventory/daily-stock/end-of-day',
       );
       const total = rows.reduce((s, r) => s + r.quantity_wasted, 0);
-      toast(`End of day: ${total} unit${total === 1 ? '' : 's'} marked as waste`);
+      toast(`Waste recorded for ${rows.length} items. Total: ${total} unit${total === 1 ? '' : 's'}`);
       refreshStock();
     } catch (e) {
       toast(e instanceof Error ? e.message : 'End-of-day failed', 'error');
     }
+  };
+
+  const handleRestock = (type: 'raw_material' | 'ready_made', id: number) => {
+    setPurchasePrefill({ item_type: type, item_id: id });
+    setTab('purchases');
   };
 
   return (
@@ -97,12 +99,6 @@ export function Inventory() {
               {belowReorder} item{belowReorder > 1 ? 's' : ''} below reorder level
             </button>
           )}
-          <Button size="sm" variant="secondary" onClick={initDay}>
-            Init daily stock
-          </Button>
-          <Button size="sm" variant="secondary" onClick={endOfDay}>
-            End of day
-          </Button>
         </div>
       </header>
 
@@ -121,8 +117,8 @@ export function Inventory() {
       </nav>
 
       <main className="min-h-0 flex-1 overflow-y-auto p-4">
-        {tab === 'raw' && <RawMaterialsTab materials={materials ?? []} />}
-        {tab === 'ready' && <ReadyMadeStockTab stock={readyMade ?? []} onChanged={refreshStock} />}
+        {tab === 'raw' && <RawMaterialsTab materials={materials ?? []} onRestock={handleRestock} />}
+        {tab === 'ready' && <ReadyMadeStockTab stock={readyMade ?? []} dailyStock={dailyStock ?? []} onChanged={refreshStock} onRestock={handleRestock} onEndOfDay={endOfDay} />}
         {tab === 'purchases' && (
           <PurchaseOrdersTab
             vendors={vendors ?? []}
@@ -130,9 +126,11 @@ export function Inventory() {
             readyMade={readyMade ?? []}
             orders={orders ?? []}
             onChanged={refreshStock}
+            prefill={purchasePrefill}
+            clearPrefill={() => setPurchasePrefill(null)}
           />
         )}
-        {tab === 'losses' && <LossesDemandTab stockouts={stockouts ?? []} waste={waste ?? []} />}
+        {tab === 'losses' && <LossesDemandTab stockouts={stockouts ?? []} waste={waste ?? []} onEndOfDay={endOfDay} />}
       </main>
     </div>
   );

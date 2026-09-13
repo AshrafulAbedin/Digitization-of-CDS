@@ -12,36 +12,40 @@ export function materialStatus(m: { current_stock: number; reorder_level: number
   return 'ok' as const;
 }
 
-export function RawMaterialsTab({ materials }: { materials: RawMaterial[] }) {
+export function RawMaterialsTab({ materials, onRestock }: { materials: RawMaterial[], onRestock: (type: 'raw_material', id: number) => void }) {
   const [query, setQuery] = useState('');
   const [belowOnly, setBelowOnly] = useState(false);
 
-  const rows = useMemo(
-    () =>
-      materials.filter(
-        (m) =>
-          m.name.toLowerCase().includes(query.toLowerCase()) &&
-          (!belowOnly || m.current_stock <= m.reorder_level),
-      ),
-    [materials, query, belowOnly],
-  );
+  const rows = useMemo(() => {
+    let filtered = materials.filter(
+      (m) =>
+        m.name.toLowerCase().includes(query.toLowerCase()) &&
+        (!belowOnly || m.current_stock <= m.reorder_level)
+    );
+    // Sort order: LOW-status rows first, then alphabetical.
+    return filtered.sort((a, b) => {
+      const aLow = a.current_stock <= a.reorder_level ? 0 : 1;
+      const bLow = b.current_stock <= b.reorder_level ? 0 : 1;
+      if (aLow !== bLow) return aLow - bLow;
+      return a.name.localeCompare(b.name);
+    });
+  }, [materials, query, belowOnly]);
 
   const columns: Column<RawMaterial>[] = [
-    { key: 'name', header: 'Material', render: (m) => <span className="font-medium text-body">{m.name}</span>, sortValue: (m) => m.name },
+    { key: 'name', header: 'Material', render: (m) => <span className="font-medium text-body">{m.name}</span> },
     { key: 'unit', header: 'Unit', render: (m) => m.unit },
-    { key: 'stock', header: 'On hand', align: 'right', render: (m) => `${m.current_stock} ${m.unit}`, sortValue: (m) => m.current_stock },
-    { key: 'reorder', header: 'Reorder level', align: 'right', render: (m) => `${m.reorder_level} ${m.unit}`, sortValue: (m) => m.reorder_level },
-    { key: 'cost', header: 'Avg unit cost', align: 'right', render: (m) => fmtTaka(m.average_unit_cost), sortValue: (m) => m.average_unit_cost },
+    { key: 'stock', header: 'Current stock', align: 'right', render: (m) => String(m.current_stock) },
+    { key: 'reorder', header: 'Reorder level', align: 'right', render: (m) => String(m.reorder_level) },
+    { key: 'cost', header: 'Avg unit cost', align: 'right', render: (m) => fmtTaka(m.average_unit_cost) },
     {
       key: 'status',
       header: 'Status',
       render: (m) => {
-        const s = materialStatus(m);
+        const isLow = m.current_stock <= m.reorder_level;
         return (
-          <StatusBadge tone={s}>{s === 'ok' ? 'OK' : s === 'warn' ? 'Reorder' : 'Critical'}</StatusBadge>
+          <StatusBadge tone={isLow ? 'critical' : 'ok'}>{isLow ? 'LOW' : 'OK'}</StatusBadge>
         );
-      },
-      sortValue: (m) => m.current_stock / Math.max(1, m.reorder_level),
+      }
     },
     {
       key: 'actions',
@@ -49,19 +53,10 @@ export function RawMaterialsTab({ materials }: { materials: RawMaterial[] }) {
       render: (m) => (
         <Button
           size="sm"
-          variant="ghost"
-          onClick={() => {
-            const newLevel = prompt(`Enter new reorder level for ${m.name}:`, m.reorder_level.toString());
-            if (newLevel && !isNaN(Number(newLevel)) && Number(newLevel) >= 0) {
-              fetch(`/api/inventory/raw-materials/${m.raw_material_id}/reorder-level`, {
-                method: 'PATCH',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ reorderLevel: Number(newLevel) }),
-              }).then(() => alert('Reorder level updated. Refresh page to see changes.'));
-            }
-          }}
+          variant="secondary"
+          onClick={() => onRestock('raw_material', m.raw_material_id)}
         >
-          Edit reorder
+          Restock
         </Button>
       ),
     },

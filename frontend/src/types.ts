@@ -126,6 +126,8 @@ export interface WasteRow {
   menu_item_id: number;
   name: string;
   stock_date: string;
+  quantity_received: number;
+  quantity_sold: number;
   quantity_wasted: number;
   average_unit_cost: number;
   cost_impact: number;
@@ -166,3 +168,16 @@ export const TAKA = '৳';
 
 export const fmtTaka = (n: number | null | undefined) =>
   `${TAKA}${Number(n ?? 0).toLocaleString('en-IN', { maximumFractionDigits: 0 })}`;
+
+export interface DailyStockRow {
+  daily_stock_id: number;
+  menu_item_id: number;
+  name: string;
+  stock_date: string;
+  quantity_received: number;
+  quantity_sold: number;
+  quantity_received: number;
+  quantity_sold: number;
+  quantity_wasted: number;
+  average_unit_cost: number;
+}

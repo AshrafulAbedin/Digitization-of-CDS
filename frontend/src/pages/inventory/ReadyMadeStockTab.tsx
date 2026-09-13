@@ -1,148 +1,140 @@
 import { useState } from 'react';
-import type { ReadyMadeStockRow } from '../../types';
+import type { ReadyMadeStockRow, DailyStockRow } from '../../types';
 import { fmtTaka } from '../../types';
-import { apiPost, apiPatch } from '../../api/client';
+import { apiPatch } from '../../api/client';
 import { DataTable, type Column } from '../../components/ui/DataTable';
 import { StatusBadge } from '../../components/ui/StatusBadge';
-import { Stepper } from '../../components/ui/Stepper';
 import { Button } from '../../components/ui/Button';
 import { Modal } from '../../components/ui/Modal';
 import { useToast } from '../../components/ui/Toast';
-import { materialStatus } from './RawMaterialsTab';
 
 interface Props {
   stock: ReadyMadeStockRow[];
+  dailyStock: DailyStockRow[];
   onChanged: () => void;
+  onRestock: (type: 'ready_made', id: number) => void;
+  onEndOfDay: () => void;
 }
 
-export function ReadyMadeStockTab({ stock, onChanged }: Props) {
+export function ReadyMadeStockTab({ stock, dailyStock, onChanged, onRestock, onEndOfDay }: Props) {
   const toast = useToast();
-  const [wasteFor, setWasteFor] = useState<ReadyMadeStockRow | null>(null);
-  const [qty, setQty] = useState(1);
-  const [reason, setReason] = useState('expired');
+  const [editPriceFor, setEditPriceFor] = useState<ReadyMadeStockRow | null>(null);
+  const [newPrice, setNewPrice] = useState('');
 
-  const recordWaste = async () => {
-    if (!wasteFor) return;
+  const handleEditPrice = async () => {
+    if (!editPriceFor) return;
     try {
-      await apiPost('/inventory/waste', { menuItemId: wasteFor.menu_item_id, quantity: qty });
-      toast(`Waste recorded: ${qty}× ${wasteFor.name} (${reason})`);
-      setWasteFor(null);
+      await apiPatch(`/inventory/menu-items/${editPriceFor.menu_item_id}/price`, { price: Number(newPrice) });
+      toast('Price updated successfully');
+      setEditPriceFor(null);
+      setNewPrice('');
       onChanged();
     } catch (e) {
-      toast(e instanceof Error ? e.message : 'Failed to record waste', 'error');
+      toast(e instanceof Error ? e.message : 'Price update failed', 'error');
     }
   };
 
-  const columns: Column<ReadyMadeStockRow>[] = [
-    { key: 'name', header: 'Item', render: (r) => <span className="font-medium text-body">{r.name}</span>, sortValue: (r) => r.name },
-    { key: 'price', header: 'Selling price', align: 'right', render: (r) => fmtTaka(r.selling_price), sortValue: (r) => r.selling_price },
-    { key: 'cost', header: 'Avg cost', align: 'right', render: (r) => fmtTaka(r.average_unit_cost), sortValue: (r) => r.average_unit_cost },
+  const nonExpiry = stock
+    .filter((r) => !r.expires_daily)
+    .sort((a, b) => {
+      const aLow = a.current_stock <= a.reorder_level ? 0 : 1;
+      const bLow = b.current_stock <= b.reorder_level ? 0 : 1;
+      if (aLow !== bLow) return aLow - bLow;
+      return a.name.localeCompare(b.name);
+    });
+
+  const colA: Column<ReadyMadeStockRow>[] = [
+    { key: 'name', header: 'Name', render: (r) => <span className="font-medium text-body">{r.name}</span> },
+    { key: 'price', header: 'Selling price', align: 'right', render: (r) => fmtTaka(r.selling_price) },
+    { key: 'stock', header: 'Current stock', align: 'right', render: (r) => String(r.current_stock) },
+    { key: 'cost', header: 'Avg cost', align: 'right', render: (r) => fmtTaka(r.average_unit_cost) },
     {
       key: 'margin',
-      header: 'Margin %',
+      header: 'Margin',
       align: 'right',
-      render: (r) =>
-        r.average_unit_cost > 0
-          ? `${Math.round(((r.selling_price - r.average_unit_cost) / r.selling_price) * 100)}%`
-          : '—',
-      sortValue: (r) => (r.average_unit_cost > 0 ? (r.selling_price - r.average_unit_cost) / r.selling_price : 0),
+      render: (r) => {
+        const diff = r.selling_price - r.average_unit_cost;
+        const color = diff >= 0 ? 'text-ok' : 'text-warn';
+        return <span className={`font-medium ${color}`}>{fmtTaka(diff)}</span>;
+      },
     },
-    { key: 'stock', header: 'On hand', align: 'right', render: (r) => String(r.current_stock), sortValue: (r) => r.current_stock },
-    { key: 'reorder', header: 'Reorder level', align: 'right', render: (r) => String(r.reorder_level) },
     {
       key: 'status',
       header: 'Status',
       render: (r) => {
-        if (r.expires_daily) return <StatusBadge tone="gold">Daily</StatusBadge>;
-        const s = materialStatus(r);
-        return <StatusBadge tone={s}>{s === 'ok' ? 'OK' : s === 'warn' ? 'Reorder' : 'Critical'}</StatusBadge>;
+        const isLow = r.current_stock <= r.reorder_level;
+        return <StatusBadge tone={isLow ? 'critical' : 'ok'}>{isLow ? 'LOW' : 'OK'}</StatusBadge>;
       },
     },
     {
       key: 'actions',
       header: '',
       render: (r) => (
-        <div className="flex gap-2">
-          {!r.expires_daily && (
-            <Button
-              size="sm"
-              variant="ghost"
-              onClick={async () => {
-                const newPrice = prompt(`Enter new selling price for ${r.name} (must be >= ${fmtTaka(r.average_unit_cost)}):`, r.selling_price.toString());
-                if (newPrice && !isNaN(Number(newPrice)) && Number(newPrice) > 0) {
-                  try {
-                    await apiPatch(`/inventory/menu-items/${r.menu_item_id}/price`, { price: Number(newPrice) });
-                    toast('Price updated successfully');
-                    onChanged();
-                  } catch (e) {
-                    alert(e instanceof Error ? e.message : 'Price update failed');
-                  }
-                }
-              }}
-            >
-              Edit price
-            </Button>
-          )}
-          <Button
-            size="sm"
-            variant="ghost"
-            onClick={async () => {
-              const newLevel = prompt(`Enter new reorder level for ${r.name}:`, r.reorder_level.toString());
-              if (newLevel && !isNaN(Number(newLevel)) && Number(newLevel) >= 0) {
-                try {
-                  await apiPatch(`/inventory/menu-items/${r.menu_item_id}/reorder-level`, { reorderLevel: Number(newLevel) });
-                  toast('Reorder level updated');
-                  onChanged();
-                } catch (e) {
-                  alert(e instanceof Error ? e.message : 'Update failed');
-                }
-              }
-            }}
-          >
-            Edit reorder
-          </Button>
-          <Button
-            size="sm"
-            variant="ghost"
-            onClick={() => {
-              setWasteFor(r);
-              setQty(1);
-              setReason('expired');
-            }}
-          >
-            Record waste
-          </Button>
+        <div className="flex gap-2 justify-end">
+          <Button size="sm" variant="secondary" onClick={() => onRestock('ready_made', r.menu_item_id)}>Purchase</Button>
+          <Button size="sm" variant="ghost" onClick={() => { setEditPriceFor(r); setNewPrice(r.selling_price.toString()); }}>Edit Price</Button>
+        </div>
+      ),
+    },
+  ];
+
+  const colB: Column<DailyStockRow>[] = [
+    { key: 'name', header: 'Name', render: (r) => <span className="font-medium text-body">{r.name}</span> },
+    { key: 'received', header: 'Received', align: 'right', render: (r) => String(r.quantity_received) },
+    { key: 'sold', header: 'Sold', align: 'right', render: (r) => String(r.quantity_sold) },
+    { key: 'remaining', header: 'Remaining', align: 'right', render: (r) => String(r.quantity_received - r.quantity_sold) },
+    { key: 'cost', header: 'Avg cost', align: 'right', render: (r) => fmtTaka(r.average_unit_cost) },
+    {
+      key: 'actions',
+      header: '',
+      render: (r) => (
+        <div className="flex justify-end">
+          <Button size="sm" variant="secondary" onClick={() => onRestock('ready_made', r.menu_item_id)}>Purchase</Button>
         </div>
       ),
     },
   ];
 
   return (
-    <>
-      <DataTable columns={columns} rows={stock} rowKey={(r) => r.menu_item_id} emptyMessage="No sellable items" />
-      <Modal open={wasteFor !== null} onClose={() => setWasteFor(null)} title={`Record waste — ${wasteFor?.name}`}>
-        <div className="flex items-center gap-4">
-          <Stepper value={qty} min={1} max={Math.max(1, wasteFor?.current_stock ?? 1)} onChange={setQty} />
-          <select
-            value={reason}
-            onChange={(e) => setReason(e.target.value)}
-            className="h-10 flex-1 rounded-lg border border-[#d9d4cc] bg-white px-2 text-sm"
-          >
-            <option value="expired">Expired</option>
-            <option value="damaged">Damaged</option>
-            <option value="other">Other</option>
-          </select>
+    <div className="space-y-8">
+      <div>
+        <h2 className="mb-3 text-lg font-bold text-ink">Non-Expiry Items</h2>
+        <DataTable columns={colA} rows={nonExpiry} rowKey={(r) => r.menu_item_id} emptyMessage="No non-expiry items" />
+      </div>
+
+      <div>
+        <div className="mb-3 flex items-center justify-between">
+          <h2 className="text-lg font-bold text-ink">Daily-Expiry Items</h2>
+          <div className="flex gap-2">
+            <Button variant="secondary" size="sm" onClick={onEndOfDay}>End of Day</Button>
+            <Button variant="primary" size="sm" onClick={() => onRestock('ready_made', 0)}>Purchase</Button>
+          </div>
         </div>
-        <p className="mt-2 text-sm text-label">Deducts today’s stock and logs the cost impact.</p>
-        <div className="mt-4 flex justify-end gap-2">
-          <Button variant="ghost" onClick={() => setWasteFor(null)}>
-            Cancel
-          </Button>
-          <Button variant="primary" onClick={recordWaste}>
-            Confirm
-          </Button>
-        </div>
+        <DataTable columns={colB} rows={dailyStock} rowKey={(r) => r.menu_item_id} emptyMessage="No daily-expiry items" />
+      </div>
+
+      <Modal open={editPriceFor !== null} onClose={() => setEditPriceFor(null)} title="Edit Selling Price">
+        {editPriceFor && (
+          <div className="space-y-4">
+            <div className="text-sm text-body">
+              Current price: <span className="font-medium text-ink">{fmtTaka(editPriceFor.selling_price)}</span>
+            </div>
+            <div>
+              <label className="mb-1 block text-sm font-medium text-ink">New price</label>
+              <input
+                type="number"
+                value={newPrice}
+                onChange={(e) => setNewPrice(e.target.value)}
+                className="w-full rounded-lg border border-[#d9d4cc] bg-white px-3 py-2 text-sm outline-none focus:border-gold"
+              />
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button variant="ghost" onClick={() => setEditPriceFor(null)}>Cancel</Button>
+              <Button variant="primary" onClick={handleEditPrice}>Save</Button>
+            </div>
+          </div>
+        )}
       </Modal>
-    </>
+    </div>
   );
 }

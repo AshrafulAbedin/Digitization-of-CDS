@@ -2,8 +2,8 @@ import { useState } from 'react';
 import { fmtTaka } from '../../types';
 
 /** Chart hues — validated for CVD separation on white (dataviz six checks). */
-export const HUE_A = '#B8791A'; // warm gold — magnitude / first category
-export const HUE_B = '#3D6DBF'; // blue — second category
+export const HUE_A = '#1a1a1a'; // black
+export const HUE_B = '#2e7d32'; // green
 
 interface Bar {
   label: string;
@@ -34,7 +34,7 @@ export function BarChart({ bars, money = true }: { bars: Bar[]; money?: boolean 
             style={{
               height: `${(b.value / max) * 100}%`,
               minHeight: b.value > 0 ? 3 : 0,
-              background: hover === i ? '#8f5d13' : HUE_A,
+              background: hover === i ? '#3a3a3a' : HUE_A,
             }}
           />
           <span className="mt-1 w-full truncate text-center text-xs text-label">{b.label}</span>
@@ -67,7 +67,7 @@ export function BarList({
         if (i === 0) {
           textSize = 'text-lg';
           fontWe = 'font-bold';
-          if (urgencyMode) rankColor = '#d97706';
+          if (urgencyMode) rankColor = '#b76e6e';
         } else if (i === 1) {
           textSize = 'text-base';
           opacity = 0.85;
@@ -106,27 +106,31 @@ export function MixBar({
   b,
   labelA,
   labelB,
+  hueA = HUE_A,
+  hueB = HUE_B,
 }: {
   a: number;
   b: number;
   labelA: string;
   labelB: string;
+  hueA?: string;
+  hueB?: string;
 }) {
   const total = a + b;
   const pa = total === 0 ? 50 : (a / total) * 100;
   return (
     <div>
       <div className="flex h-6 gap-[2px] overflow-hidden rounded-[4px]">
-        <div style={{ width: `${pa}%`, background: HUE_A }} title={`${labelA}: ${a}`} />
-        <div style={{ width: `${100 - pa}%`, background: HUE_B }} title={`${labelB}: ${b}`} />
+        <div style={{ width: `${pa}%`, background: hueA }} title={`${labelA}: ${a}`} />
+        <div style={{ width: `${100 - pa}%`, background: hueB }} title={`${labelB}: ${b}`} />
       </div>
       <div className="mt-2 flex justify-between text-sm">
         <span className="flex items-center gap-1.5 text-body">
-          <span className="h-2.5 w-2.5 rounded-sm" style={{ background: HUE_A }} />
+          <span className="h-2.5 w-2.5 rounded-sm" style={{ background: hueA }} />
           {labelA} · <span className="tabular">{a}</span> ({total ? Math.round((a / total) * 100) : 0}%)
         </span>
         <span className="flex items-center gap-1.5 text-body">
-          <span className="h-2.5 w-2.5 rounded-sm" style={{ background: HUE_B }} />
+          <span className="h-2.5 w-2.5 rounded-sm" style={{ background: hueB }} />
           {labelB} · <span className="tabular">{b}</span> ({total ? Math.round((b / total) * 100) : 0}%)
         </span>
       </div>

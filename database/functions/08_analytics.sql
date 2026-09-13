@@ -121,22 +121,18 @@ END;
 $$ LANGUAGE plpgsql;
 
 CREATE OR REPLACE FUNCTION get_vendor_performance() 
-RETURNS TABLE(vendor_id INT, vendor_name TEXT, item_name TEXT, avg_unit_cost DECIMAL, total_quantity DECIMAL, total_spent DECIMAL) AS $$
+RETURNS TABLE(vendor_id INT, vendor_name TEXT, po_count BIGINT, total_spend DECIMAL) AS $$
 BEGIN
   RETURN QUERY
   SELECT 
       v.vendor_id, 
       v.name AS vendor_name, 
-      COALESCE(rm.name, m.name) AS item_name, 
-      AVG(pol.unit_cost) AS avg_unit_cost, 
-      SUM(pol.quantity) AS total_quantity, 
-      SUM(pol.quantity * pol.unit_cost) AS total_spent
-  FROM purchase_order_line pol
-  JOIN purchase_order po ON pol.purchase_order_id = po.purchase_order_id
-  JOIN vendor v ON po.vendor_id = v.vendor_id
-  LEFT JOIN raw_material rm ON pol.item_type = 'raw_material' AND pol.item_id = rm.raw_material_id
-  LEFT JOIN menu_item m ON pol.item_type = 'ready_made' AND pol.item_id = m.menu_item_id
-  GROUP BY v.vendor_id, v.name, COALESCE(rm.name, m.name);
+      COUNT(po.purchase_order_id) AS po_count,
+      COALESCE(SUM(po.total_amount), 0) AS total_spend
+  FROM vendor v
+  JOIN purchase_order po ON po.vendor_id = v.vendor_id
+  GROUP BY v.vendor_id, v.name
+  ORDER BY total_spend DESC;
 END;
 $$ LANGUAGE plpgsql;
 

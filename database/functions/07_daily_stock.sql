@@ -27,7 +27,7 @@ BEGIN
     UPDATE ready_made_daily_stock
     SET quantity_wasted = quantity_received - quantity_sold
     WHERE stock_date = p_date
-      AND quantity_wasted != (quantity_received - quantity_sold);
+      AND ready_made_daily_stock.quantity_wasted != (quantity_received - quantity_sold);
 
     -- Return only items that actually have waste (for the waste log UI)
     RETURN QUERY

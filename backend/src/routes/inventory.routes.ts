@@ -140,7 +140,8 @@ inventoryRoutes.get('/stockout-log', async (_req, res) => {
 // Waste model: daily-expiry rows carry quantity_wasted (schema's native model).
 inventoryRoutes.get('/waste-log', async (_req, res) => {
   const result = await pool.query(
-    `SELECT d.daily_stock_id, d.menu_item_id, m.name, d.stock_date, d.quantity_wasted,
+    `SELECT d.daily_stock_id, d.menu_item_id, m.name, d.stock_date, 
+            d.quantity_received, d.quantity_sold, d.quantity_wasted,
             d.average_unit_cost, d.quantity_wasted * d.average_unit_cost AS cost_impact
        FROM ready_made_daily_stock d JOIN menu_item m ON m.menu_item_id = d.menu_item_id
       WHERE d.quantity_wasted > 0
