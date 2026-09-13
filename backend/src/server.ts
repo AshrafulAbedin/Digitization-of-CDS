@@ -25,8 +25,15 @@ app.use('/api/inventory', inventoryRoutes);
 app.use('/api/analytics', analyticsRoutes);
 
 // Express 5 forwards rejected promises here automatically.
-app.use((err: Error, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
+app.use((err: any, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
   console.error(err);
+  
+  // Catch custom PL/pgSQL RAISE EXCEPTION (P0001) and CHECK violations (23514)
+  if (err.code === 'P0001' || err.code === '23514') {
+    res.status(400).json({ error: err.message });
+    return;
+  }
+
   res.status(500).json({ error: err.message });
 });
 
